@@ -25,7 +25,6 @@ namespace Pyrewatcher.Handlers
 
     private void CreateTasks()
     {
-      _logger.LogInformation("abc");
       _tasks.Add(new Task(async () =>
       {
         while (true)
@@ -47,7 +46,6 @@ namespace Pyrewatcher.Handlers
 
     public void RunTasks()
     {
-      _logger.LogInformation("def");
       foreach (var task in _tasks)
       {
         task.Start();
