@@ -37,41 +37,39 @@ namespace Pyrewatcher.Commands
 
     public override async Task<bool> ExecuteAsync(RunyCommandArguments args, ChatMessage message)
     {
-      //var accountsList =
-      //  (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-      //                                      new RiotAccount {BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true}))
-      // .ToList();
+      var accountsList =
+        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
+                                            new RiotAccount { BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true }))
+       .ToList();
 
-      //(var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accountsList);
+      (var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accountsList);
 
-      //if (gameInfo == null)
-      //{
-      //  _client.SendMessage(message.Channel, string.Format(Globals.Locale["runy_response_noactivegame"], message.Channel));
-      //}
-      //else
-      //{
-      //  Globals.Runes ??= await _databaseHelpers.LoadRunes();
+      if (gameInfo == null)
+      {
+        _client.SendMessage(message.Channel, string.Format(Globals.Locale["runy_response_noactivegame"], message.Channel));
+      }
+      else
+      {
+        Globals.Runes ??= await _databaseHelpers.LoadRunes();
 
-      //  var streamer = gameInfo.Participants.Find(x => x.SummonerId == activeAccount.SummonerId);
-      //  var runesList = streamer.Perks.PerkIds.Select(x => Globals.Runes[x]).ToList();
+        var streamer = gameInfo.Participants.Find(x => x.SummonerId == activeAccount.SummonerId);
+        var runesList = streamer.Perks.PerkIds.Select(x => Globals.Runes[x]).ToList();
 
-      //  var sb = new StringBuilder();
+        var sb = new StringBuilder();
 
-      //  sb.Append(Globals.Runes[streamer.Perks.PerkStyle].ToUpper());
-      //  sb.Append(" - ");
-      //  sb.Append(string.Join(", ", runesList.GetRange(0, 4)));
-      //  sb.Append(" | ");
-      //  sb.Append(Globals.Runes[streamer.Perks.PerkSubStyle].ToUpper());
-      //  sb.Append(" - ");
-      //  sb.Append(string.Join(", ", runesList.GetRange(4, 2)));
-      //  sb.Append(" | ");
-      //  sb.Append(string.Join(", ", runesList.GetRange(6, 3)));
+        sb.Append(Globals.Runes[streamer.Perks.PerkStyle].ToUpper());
+        sb.Append(" - ");
+        sb.Append(string.Join(", ", runesList.GetRange(0, 4)));
+        sb.Append(" | ");
+        sb.Append(Globals.Runes[streamer.Perks.PerkSubStyle].ToUpper());
+        sb.Append(" - ");
+        sb.Append(string.Join(", ", runesList.GetRange(4, 2)));
+        sb.Append(" | ");
+        sb.Append(string.Join(", ", runesList.GetRange(6, 3)));
 
-      //  _client.SendMessage(message.Channel, string.Format(Globals.Locale["runy_response"], sb));
-      //}
-
-      _client.SendMessage(message.Channel, "Podgląd statystyk gier jest tymczasowo niedostępny");
-
+        _client.SendMessage(message.Channel, string.Format(Globals.Locale["runy_response"], sb));
+      }
+      
       return true;
     }
   }

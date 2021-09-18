@@ -8,11 +8,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.Handlers;
 using Pyrewatcher.Helpers;
+using Pyrewatcher.Riot.Interfaces;
+using Pyrewatcher.Riot.Services;
 using Serilog;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
 using TwitchLib.Client;
-using TwitchLib.Client.Enums;
 
 namespace Pyrewatcher
 {
@@ -48,7 +49,6 @@ namespace Pyrewatcher
 
       try
       {
-
         var bot = host.Services.GetService<Bot>();
         await bot.Setup();
         bot.Connect();
@@ -85,6 +85,8 @@ namespace Pyrewatcher
                     services.AddSingleton<RiotLolApiHelper>();
                     services.AddSingleton<RiotTftApiHelper>();
                     services.AddSingleton<Utilities>();
+
+                    services.AddSingleton<IMatchV5Client, MatchV5Client>();
 
                     services.AddSingleton<TwitchClient>();
 

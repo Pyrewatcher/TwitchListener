@@ -35,56 +35,54 @@ namespace Pyrewatcher.Commands
 
     public override async Task<bool> ExecuteAsync(BanyCommandArguments args, ChatMessage message)
     {
-      //var accountsList =
-      //  (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-      //                                      new RiotAccount {BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true}))
-      // .ToList();
+      var accountsList =
+        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
+                                            new RiotAccount { BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true }))
+       .ToList();
 
-      //(var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accountsList);
+      (var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accountsList);
 
-      //if (gameInfo == null)
-      //{
-      //  _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response_noactivegame"], message.Channel));
-      //}
-      //else
-      //{
-      //  var streamer = gameInfo.Participants.Find(x => x.SummonerId == activeAccount.SummonerId);
+      if (gameInfo == null)
+      {
+        _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response_noactivegame"], message.Channel));
+      }
+      else
+      {
+        var streamer = gameInfo.Participants.Find(x => x.SummonerId == activeAccount.SummonerId);
 
-      //  if (streamer == null)
-      //  {
-      //    _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response_noactivegame"], message.Channel));
+        if (streamer == null)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response_noactivegame"], message.Channel));
 
-      //    return true;
-      //  }
+          return true;
+        }
 
-      //  var allyBansIds = gameInfo.BannedChampions.Where(x => x.TeamId == streamer.TeamId).OrderBy(x => x.PickTurn).ToList();
-      //  var enemyBansIds = gameInfo.BannedChampions.Except(allyBansIds).OrderBy(x => x.PickTurn).ToList();
+        var allyBansIds = gameInfo.BannedChampions.Where(x => x.TeamId == streamer.TeamId).OrderBy(x => x.PickTurn).ToList();
+        var enemyBansIds = gameInfo.BannedChampions.Except(allyBansIds).OrderBy(x => x.PickTurn).ToList();
 
-      //  var champions = (await _lolChampions.FindRangeByIdAsync(gameInfo.BannedChampions.Select(x => x.ChampionId))).ToList();
+        var champions = (await _lolChampions.FindRangeByIdAsync(gameInfo.BannedChampions.Select(x => x.ChampionId))).ToList();
 
-      //  var allyBans = new List<string>();
+        var allyBans = new List<string>();
 
-      //  foreach (var bannedChampion in allyBansIds)
-      //  {
-      //    var champion = champions.Find(x => x.Id == bannedChampion.ChampionId)?.Name ?? "Unknown";
-      //    allyBans.Add(champion);
-      //  }
+        foreach (var bannedChampion in allyBansIds)
+        {
+          var champion = champions.Find(x => x.Id == bannedChampion.ChampionId)?.Name ?? "Unknown";
+          allyBans.Add(champion);
+        }
 
-      //  var enemyBans = new List<string>();
+        var enemyBans = new List<string>();
 
-      //  foreach (var bannedChampion in enemyBansIds)
-      //  {
-      //    var champion = champions.Find(x => x.Id == bannedChampion.ChampionId)?.Name ?? "Unknown";
-      //    enemyBans.Add(champion);
-      //  }
+        foreach (var bannedChampion in enemyBansIds)
+        {
+          var champion = champions.Find(x => x.Id == bannedChampion.ChampionId)?.Name ?? "Unknown";
+          enemyBans.Add(champion);
+        }
 
-      //  var response = $"{string.Join(", ", allyBans)} ➔ {string.Join(", ", enemyBans)}";
+        var response = $"{string.Join(", ", allyBans)} ➔ {string.Join(", ", enemyBans)}";
 
-      //  _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response"], response));
-      //}
-
-      _client.SendMessage(message.Channel, "Podgląd statystyk gier jest tymczasowo niedostępny");
-
+        _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response"], response));
+      }
+      
       return true;
     }
   }

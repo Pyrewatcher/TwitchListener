@@ -5,6 +5,9 @@ using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
+using Pyrewatcher.Riot.Enums;
+using Pyrewatcher.Riot.Interfaces;
+using Pyrewatcher.Riot.Utilities;
 
 namespace Pyrewatcher.Helpers
 {
@@ -19,10 +22,11 @@ namespace Pyrewatcher.Helpers
     private readonly TftMatchRepository _tftMatches;
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly UserRepository _users;
+    private readonly IMatchV5Client _matchV5;
 
     public CommandHelpers(BanRepository bans, RiotAccountRepository riotAccounts, LolMatchRepository lolMatches, UserRepository users,
                           TftMatchRepository tftMatches, RiotLolApiHelper riotLolApiHelper, RiotTftApiHelper riotTftApiHelper, IConfiguration config,
-                          TwitchApiHelper twitchApiHelper)
+                          TwitchApiHelper twitchApiHelper, IMatchV5Client matchV5)
     {
       _bans = bans;
       _riotAccounts = riotAccounts;
@@ -33,6 +37,7 @@ namespace Pyrewatcher.Helpers
       _riotTftApiHelper = riotTftApiHelper;
       _config = config;
       _twitchApiHelper = twitchApiHelper;
+      _matchV5 = matchV5;
     }
 
     public async Task<bool> IsUserPermitted(User user, Command command)
@@ -107,67 +112,55 @@ namespace Pyrewatcher.Helpers
       {
         return;
       }
+      
+      var matchesToRequest = new List<(RiotAccount, string)>();
 
-      var matchlists = await _riotLolApiHelper.MatchGetMatchlistsByRiotAccountsList(accountsList);
-
-      var zippedList = accountsList.Zip(matchlists).ToList();
-
-      foreach ((var account, var matchlist) in zippedList)
+      foreach (var account in accountsList)
       {
-        if (matchlist.Matches != null)
+        var matchesResponse = await _matchV5.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, RiotUtilities.GetStartTime()); // TODO: Set routing value depending on server
+
+        if (!matchesResponse.IsSuccess)
         {
-          var matches = matchlist.Matches.Select(x => new LolMatch
-                                  {
-                                    AccountId = account.Id,
-                                    MatchId = x.GameId,
-                                    ServerApiCode = x.PlatformId.ToLower(),
-                                    Timestamp = x.Timestamp
-                                  })
-                                 .ToList();
-          await _lolMatches.InsertRangeIfNotExistsAsync(matches);
+          continue;
+        }
+
+        foreach (var matchId in matchesResponse.Content)
+        {
+          var matchNumber = long.Parse(matchId.Split('_')[1]);
+
+          if (await _lolMatches.FindAsync("[MatchId] = @MatchId", new LolMatch { MatchId = matchNumber }) is null && matchesToRequest.All(x => x.Item2 != matchId))
+          {
+            matchesToRequest.Add((account, matchId));
+          }
         }
       }
 
-      var matchesToUpdate = (await _lolMatches.FindRangeAsync("Result = @Result", new LolMatch {Result = ""})).ToList();
-
-      if (matchesToUpdate.Count > 0)
+      foreach ((var account, var matchId) in matchesToRequest)
       {
-        var matchDataList = await _riotLolApiHelper.MatchGetByMatchesList(matchesToUpdate);
+        var matchResponse = await _matchV5.GetMatchById(matchId, RoutingValue.Europe); // TODO: Set routing value depending on server
 
-        var zippedMatchList = matchesToUpdate.Zip(matchDataList).ToList();
-
-        foreach ((var match, var matchData) in zippedMatchList)
+        if (!matchResponse.IsSuccess)
         {
-          var account = accountsList.Find(x => x.Id == matchesToUpdate.Find(y => y.MatchId == matchData.GameId).AccountId);
-
-          if (account == null)
-          {
-            continue;
-          }
-
-          var participantIdentity =
-            matchData.ParticipantIdentities.Find(x => x.Player.AccountId == account.AccountId || x.Player.CurrentAccountId == account.AccountId);
-
-          if (participantIdentity == null)
-          {
-            continue;
-          }
-
-          var participant = matchData.Participants.Find(x => x.ParticipantId == participantIdentity.ParticipantId);
-
-          if (participant == null)
-          {
-            continue;
-          }
-
-          match.ChampionId = participant.ChampionId;
-          match.Result = participant.Stats.Win ? "W" : "L";
-          match.Kda = $"{participant.Stats.Kills}/{participant.Stats.Deaths}/{participant.Stats.Assists}";
-          match.GameDuration = matchData.GameDuration;
-          match.ControlWardsBought = participant.Stats.VisionWardsBoughtInGame;
-
-          await _lolMatches.UpdateAsync(match);
+          continue;
         }
+
+        var match = matchResponse.Content.Info;
+        var participant = match.Players.First(x => x.Puuid == account.Puuid);
+
+        var databaseMatch = new LolMatch
+        {
+          AccountId = account.Id,
+          MatchId = match.Id,
+          ServerApiCode = matchId.Split('_')[0],
+          Timestamp = match.Timestamp,
+          ChampionId = participant.ChampionId,
+          Result = participant.WonMatch ? "W" : "L",
+          Kda = $"{participant.Kills}/{participant.Deaths}/{participant.Assists}",
+          GameDuration = match.Duration / 1000,
+          ControlWardsBought = participant.VisionWardsBought
+        };
+
+        await _lolMatches.InsertAsync(databaseMatch);
       }
     }
 
