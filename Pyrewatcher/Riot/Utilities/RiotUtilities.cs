@@ -16,9 +16,7 @@ namespace Pyrewatcher.Riot.Utilities
       {
         var today = DateTime.Today;
 
-        var output = new DateTimeOffset(today.Year, today.Month, today.Day, 4, 00, 00, TimeSpan.Zero).ToUnixTimeSeconds();
-
-        return output;
+        return new DateTimeOffset(today.Year, today.Month, today.Day, 4, 00, 00, TimeSpan.Zero).ToUnixTimeSeconds();
       }
     }
   }

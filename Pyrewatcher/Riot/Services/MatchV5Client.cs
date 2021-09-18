@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
@@ -7,6 +6,7 @@ using Pyrewatcher.Common.Interfaces;
 using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Interfaces;
 using Pyrewatcher.Riot.Models;
+using Pyrewatcher.Riot.Utilities;
 
 namespace Pyrewatcher.Riot.Services
 {
@@ -57,46 +57,18 @@ namespace Pyrewatcher.Riot.Services
         request = request.SetQueryParam("count", count);
       }
 
-      try
-      {
-        var response = await request.SendAsync(HttpMethod.Get);
-        var content = await response.GetJsonAsync<IEnumerable<string>>();
+      var response = await request.GetAsync<IEnumerable<string>>();
 
-        var output = new RiotResponse<IEnumerable<string>>(response.StatusCode, content);
-
-        return output;
-      }
-      catch (FlurlHttpException exception)
-      {
-        var response = await exception.GetResponseJsonAsync<RiotApiExceptionDetails>();
-
-        var output = new RiotResponse<IEnumerable<string>>(response.Status.StatusCode, null, response.Status.Message);
-
-        return output;
-      }
+      return response;
     }
 
     public async Task<IResponse<MatchV5Dto>> GetMatchById(string matchId, RoutingValue routingValue)
     {
       var request = BaseRequest(routingValue).AppendPathSegments("matches", matchId);
 
-      try
-      {
-        var response = await request.SendAsync(HttpMethod.Get);
-        var content = await response.GetJsonAsync<MatchV5Dto>();
+      var response = await request.GetAsync<MatchV5Dto>();
 
-        var output = new RiotResponse<MatchV5Dto>(response.StatusCode, content);
-
-        return output;
-      }
-      catch (FlurlHttpException exception)
-      {
-        var response = await exception.GetResponseJsonAsync<RiotApiExceptionDetails>();
-
-        var output = new RiotResponse<MatchV5Dto>(response.Status.StatusCode, null, response.Status.Message);
-
-        return output;
-      }
+      return response;
     }
   }
 }
