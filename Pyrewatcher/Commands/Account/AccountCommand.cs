@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -6,7 +7,9 @@ using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
-using Pyrewatcher.Models;
+using Pyrewatcher.Riot.Enums;
+using Pyrewatcher.Riot.Interfaces;
+using Pyrewatcher.Riot.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -21,9 +24,10 @@ namespace Pyrewatcher.Commands
     private readonly RiotLolApiHelper _riotLolApiHelper;
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly Utilities _utilities;
+    private readonly ISummonerV4Client _summonerV4;
 
     public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, BroadcasterRepository broadcasters, RiotAccountRepository riotAccounts,
-                          RiotLolApiHelper riotLolApiHelper, RiotTftApiHelper riotTftApiHelper, Utilities utilities)
+                          RiotLolApiHelper riotLolApiHelper, RiotTftApiHelper riotTftApiHelper, Utilities utilities, ISummonerV4Client summonerV4)
     {
       _client = client;
       _logger = logger;
@@ -32,6 +36,7 @@ namespace Pyrewatcher.Commands
       _riotLolApiHelper = riotLolApiHelper;
       _riotTftApiHelper = riotTftApiHelper;
       _utilities = utilities;
+      _summonerV4 = summonerV4;
     }
 
     public override AccountCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
@@ -162,7 +167,7 @@ namespace Pyrewatcher.Commands
       List<RiotAccount> accountsList;
       Broadcaster broadcaster;
       RiotAccount account;
-      SummonerDto data;
+      SummonerV4Dto data;
 
       switch (args.Action)
       {
@@ -301,7 +306,10 @@ namespace Pyrewatcher.Commands
           // get data about the account from Riot Summoner API
           if (args.Game.ToLower() == "lol")
           {
-            data = await _riotLolApiHelper.SummonerGetByName(args.SummonerName, serverApiCode);
+            //data = await _riotLolApiHelper.SummonerGetByName(args.SummonerName, serverApiCode);
+            var dataResponse = await _summonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server));
+
+            data = dataResponse.IsSuccess ? dataResponse.Content : null;
           }
           else if (args.Game.ToLower() == "tft")
           {
@@ -425,12 +433,20 @@ namespace Pyrewatcher.Commands
             return false;
           }
 
-          data = account.GameAbbreviation.ToLower() switch
+          if (account.GameAbbreviation.ToLower() == "lol")
           {
-            "lol" => await _riotLolApiHelper.SummonerGetByAccountId(account.AccountId, _utilities.GetServerApiCode(account.ServerCode)),
-            "tft" => await _riotTftApiHelper.SummonerGetByAccountId(account.AccountId, _utilities.GetServerApiCode(account.ServerCode)),
-            _ => null
-          };
+            var dataResponse = await _summonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode));
+
+            data = dataResponse.IsSuccess ? dataResponse.Content : null;
+          }
+          else if (account.GameAbbreviation.ToLower() == "tft")
+          {
+            data = await _riotTftApiHelper.SummonerGetByAccountId(account.AccountId, _utilities.GetServerApiCode(account.ServerCode));
+          }
+          else
+          {
+            data = null;
+          }
 
           if (data == null)
           {

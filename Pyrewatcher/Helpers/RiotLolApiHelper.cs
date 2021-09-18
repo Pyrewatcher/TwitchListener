@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
+using Pyrewatcher.Riot.Models;
 
 namespace Pyrewatcher.Helpers
 {
@@ -24,44 +25,6 @@ namespace Pyrewatcher.Helpers
       ApiClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/x-www-form-urlencoded"));
       ApiClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
       ApiClient.DefaultRequestHeaders.Add("X-Riot-Token", _config.GetSection("ApiKeys")["RiotLol"]);
-    }
-
-    public async Task<SummonerDto> SummonerGetByName(string summonerName, string serverApiCode)
-    {
-      SummonerDto output;
-
-      var url = $"https://{serverApiCode}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}";
-
-      var response = await ApiClient.GetAsync(url);
-      //Console.WriteLine("Riot LoL API call");
-
-      if (response.IsSuccessStatusCode)
-      {
-        output = await response.Content.ReadAsAsync<SummonerDto>();
-      }
-      else
-      {
-        output = null;
-      }
-
-      return output;
-    }
-
-    public async Task<SummonerDto> SummonerGetByAccountId(string accountId, string serverApiCode)
-    {
-      SummonerDto output = null;
-
-      var url = $"https://{serverApiCode}.api.riotgames.com/lol/summoner/v4/summoners/by-account/{accountId}";
-
-      var response = await ApiClient.GetAsync(url);
-      //Console.WriteLine("Riot LoL API call");
-
-      if (response.IsSuccessStatusCode)
-      {
-        output = await response.Content.ReadAsAsync<SummonerDto>();
-      }
-
-      return output;
     }
 
     public async Task<List<LeagueEntryDto>> LeagueGetByRiotAccountsList(List<RiotAccount> accountsList)
