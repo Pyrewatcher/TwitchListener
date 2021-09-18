@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
-using Pyrewatcher.Common.Interfaces;
 using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Interfaces;
 using Pyrewatcher.Riot.Models;
@@ -26,7 +25,7 @@ namespace Pyrewatcher.Riot.Services
             .WithHeader("X-Riot-Token", _config.GetValue<string>("ApiKeys:RiotLol"));
     }
 
-    public async Task<IResponse<SummonerV4Dto>> GetSummonerByName(string summonerName, Server server)
+    public async Task<SummonerV4Dto> GetSummonerByName(string summonerName, Server server)
     {
       var request = BaseRequest(server).AppendPathSegments("summoners", "by-name", summonerName);
 
@@ -35,7 +34,7 @@ namespace Pyrewatcher.Riot.Services
       return response;
     }
 
-    public async Task<IResponse<SummonerV4Dto>> GetSummonerByPuuid(string puuid, Server server)
+    public async Task<SummonerV4Dto> GetSummonerByPuuid(string puuid, Server server)
     {
       var request = BaseRequest(server).AppendPathSegments("summoners", "by-puuid", puuid);
 

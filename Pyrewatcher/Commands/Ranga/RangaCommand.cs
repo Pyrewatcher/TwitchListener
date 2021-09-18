@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
+using Pyrewatcher.Riot.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -47,12 +48,12 @@ namespace Pyrewatcher.Commands
 
         foreach (var account in accountsListLol)
         {
-          var entry = new LeagueEntryDto
+          var entry = new LeagueEntryV4Dto
           {
             Tier = account.Tier,
             Rank = account.Rank,
             LeaguePoints = account.LeaguePoints,
-            MiniSeries = new MiniSeriesDto {Progress = account.SeriesProgress}
+            Series = new LeagueEntryMiniSeriesV4Dto {Progress = account.SeriesProgress}
           };
 
           accountStrings.Add(account.DisplayName == ""
@@ -62,12 +63,12 @@ namespace Pyrewatcher.Commands
 
         foreach (var account in accountsListTft)
         {
-          var entry = new LeagueEntryDto
+          var entry = new LeagueEntryV4Dto
           {
             Tier = account.Tier,
             Rank = account.Rank,
             LeaguePoints = account.LeaguePoints,
-            MiniSeries = new MiniSeriesDto {Progress = account.SeriesProgress}
+            Series = new LeagueEntryMiniSeriesV4Dto {Progress = account.SeriesProgress}
           };
 
           accountStrings.Add(account.DisplayName == ""

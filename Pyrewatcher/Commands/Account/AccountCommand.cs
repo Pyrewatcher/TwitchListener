@@ -307,9 +307,7 @@ namespace Pyrewatcher.Commands
           if (args.Game.ToLower() == "lol")
           {
             //data = await _riotLolApiHelper.SummonerGetByName(args.SummonerName, serverApiCode);
-            var dataResponse = await _summonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server));
-
-            data = dataResponse.IsSuccess ? dataResponse.Content : null;
+            data = await _summonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server));
           }
           else if (args.Game.ToLower() == "tft")
           {
@@ -435,9 +433,7 @@ namespace Pyrewatcher.Commands
 
           if (account.GameAbbreviation.ToLower() == "lol")
           {
-            var dataResponse = await _summonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode));
-
-            data = dataResponse.IsSuccess ? dataResponse.Content : null;
+            data = await _summonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode));
           }
           else if (account.GameAbbreviation.ToLower() == "tft")
           {

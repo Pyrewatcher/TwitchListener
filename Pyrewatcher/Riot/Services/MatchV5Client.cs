@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
-using Pyrewatcher.Common.Interfaces;
 using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Interfaces;
 using Pyrewatcher.Riot.Models;
@@ -26,7 +25,7 @@ namespace Pyrewatcher.Riot.Services
             .WithHeader("X-Riot-Token", _configuration.GetSection("ApiKeys")["RiotLol"]);
     }
 
-    public async Task<IResponse<IEnumerable<string>>> GetMatchesByPuuid(string puuid, RoutingValue routingValue, long? startTime = null,
+    public async Task<IEnumerable<string>> GetMatchesByPuuid(string puuid, RoutingValue routingValue, long? startTime = null,
                                                                         long? endTime = null, int? queue = null, string type = null,
                                                                         int? start = null, int? count = null)
     {
@@ -62,7 +61,7 @@ namespace Pyrewatcher.Riot.Services
       return response;
     }
 
-    public async Task<IResponse<MatchV5Dto>> GetMatchById(string matchId, RoutingValue routingValue)
+    public async Task<MatchV5Dto> GetMatchById(string matchId, RoutingValue routingValue)
     {
       var request = BaseRequest(routingValue).AppendPathSegments("matches", matchId);
 

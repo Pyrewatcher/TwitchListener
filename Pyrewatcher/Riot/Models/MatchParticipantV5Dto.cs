@@ -2,7 +2,7 @@
 
 namespace Pyrewatcher.Riot.Models
 {
-  public class MatchV5ParticipantDto
+  public class MatchParticipantV5Dto
   {
     [JsonProperty("championId")]
     public int ChampionId { get; set; }

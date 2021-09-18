@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -17,27 +18,27 @@ namespace Pyrewatcher.Helpers
     private readonly IConfiguration _config;
     private readonly LolMatchRepository _lolMatches;
     private readonly RiotAccountRepository _riotAccounts;
-    private readonly RiotLolApiHelper _riotLolApiHelper;
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly TftMatchRepository _tftMatches;
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly UserRepository _users;
     private readonly IMatchV5Client _matchV5;
+    private readonly ILeagueV4Client _leagueV4;
 
     public CommandHelpers(BanRepository bans, RiotAccountRepository riotAccounts, LolMatchRepository lolMatches, UserRepository users,
-                          TftMatchRepository tftMatches, RiotLolApiHelper riotLolApiHelper, RiotTftApiHelper riotTftApiHelper, IConfiguration config,
-                          TwitchApiHelper twitchApiHelper, IMatchV5Client matchV5)
+                          TftMatchRepository tftMatches, RiotTftApiHelper riotTftApiHelper, IConfiguration config, TwitchApiHelper twitchApiHelper,
+                          IMatchV5Client matchV5, ILeagueV4Client leagueV4)
     {
       _bans = bans;
       _riotAccounts = riotAccounts;
       _lolMatches = lolMatches;
       _users = users;
       _tftMatches = tftMatches;
-      _riotLolApiHelper = riotLolApiHelper;
       _riotTftApiHelper = riotTftApiHelper;
       _config = config;
       _twitchApiHelper = twitchApiHelper;
       _matchV5 = matchV5;
+      _leagueV4 = leagueV4;
     }
 
     public async Task<bool> IsUserPermitted(User user, Command command)
@@ -117,14 +118,14 @@ namespace Pyrewatcher.Helpers
 
       foreach (var account in accountsList)
       {
-        var matchesResponse = await _matchV5.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, RiotUtilities.GetStartTime()); // TODO: Set routing value depending on server
+        var matches = await _matchV5.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, RiotUtilities.GetStartTime()); // TODO: Set routing value depending on server
 
-        if (!matchesResponse.IsSuccess)
+        if (matches is null)
         {
           continue;
         }
 
-        foreach (var matchId in matchesResponse.Content)
+        foreach (var matchId in matches)
         {
           var matchNumber = long.Parse(matchId.Split('_')[1]);
 
@@ -137,26 +138,25 @@ namespace Pyrewatcher.Helpers
 
       foreach ((var account, var matchId) in matchesToRequest)
       {
-        var matchResponse = await _matchV5.GetMatchById(matchId, RoutingValue.Europe); // TODO: Set routing value depending on server
+        var match = await _matchV5.GetMatchById(matchId, RoutingValue.Europe); // TODO: Set routing value depending on server
 
-        if (!matchResponse.IsSuccess)
+        if (match is null)
         {
           continue;
         }
-
-        var match = matchResponse.Content.Info;
-        var participant = match.Players.First(x => x.Puuid == account.Puuid);
+        
+        var participant = match.Info.Players.First(x => x.Puuid == account.Puuid);
 
         var databaseMatch = new LolMatch
         {
           AccountId = account.Id,
-          MatchId = match.Id,
+          MatchId = match.Info.Id,
           ServerApiCode = matchId.Split('_')[0],
-          Timestamp = match.Timestamp,
+          Timestamp = match.Info.Timestamp,
           ChampionId = participant.ChampionId,
           Result = participant.WonMatch ? "W" : "L",
           Kda = $"{participant.Kills}/{participant.Deaths}/{participant.Assists}",
-          GameDuration = match.Duration / 1000,
+          GameDuration = match.Info.Duration / 1000,
           ControlWardsBought = participant.VisionWardsBought
         };
 
@@ -265,13 +265,13 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var entriesList = await _riotLolApiHelper.LeagueGetByRiotAccountsList(accountsList);
-
-      var zippedList = accountsList.Zip(entriesList).ToList();
-
-      foreach ((var account, var entry) in zippedList)
+      foreach (var account in accountsList)
       {
-        if (entry.Tier == null || entry.Rank == null || entry.LeaguePoints == null)
+        var leagueEntries = await _leagueV4.GetLeagueEntriesBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode));
+
+        var entry = leagueEntries.FirstOrDefault(x => x.QueueType == "RANKED_SOLO_5x5");
+
+        if (entry is null)
         {
           continue;
         }
@@ -279,7 +279,7 @@ namespace Pyrewatcher.Helpers
         account.Tier = entry.Tier;
         account.Rank = entry.Rank;
         account.LeaguePoints = entry.LeaguePoints;
-        account.SeriesProgress = entry.MiniSeries?.Progress;
+        account.SeriesProgress = entry.SeriesProgress;
         await _riotAccounts.UpdateAsync(account);
       }
     }

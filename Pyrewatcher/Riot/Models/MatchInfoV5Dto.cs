@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace Pyrewatcher.Riot.Models
 {
-  public class MatchV5InfoDto
+  public class MatchInfoV5Dto
   {
     [JsonProperty("gameId")]
     public long Id { get; set; }
@@ -12,6 +12,6 @@ namespace Pyrewatcher.Riot.Models
     [JsonProperty("gameStartTimestamp")]
     public long Timestamp { get; set; }
     [JsonProperty("participants")]
-    public IEnumerable<MatchV5ParticipantDto> Players { get; set; }
+    public IEnumerable<MatchParticipantV5Dto> Players { get; set; }
   }
 }
