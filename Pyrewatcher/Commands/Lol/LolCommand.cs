@@ -38,77 +38,79 @@ namespace Pyrewatcher.Commands
 
     public override async Task<bool> ExecuteAsync(LolCommandArguments args, ChatMessage message)
     {
-      var beginTime = _utilities.GetBeginTime();
+      //var beginTime = _utilities.GetBeginTime();
 
-      var accountsList =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount {BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true}))
-       .ToList();
+      //var accountsList =
+      //  (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
+      //                                      new RiotAccount {BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true}))
+      // .ToList();
 
-      var matches = new List<LolMatch>();
+      //var matches = new List<LolMatch>();
 
-      foreach (var account in accountsList)
-      {
-        var matchesList = (await _lolMatches.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp AND GameDuration >= 330",
-                                                            new LolMatch {AccountId = account.Id, Timestamp = beginTime})).ToList();
-        matches.AddRange(matchesList);
-      }
+      //foreach (var account in accountsList)
+      //{
+      //  var matchesList = (await _lolMatches.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp AND GameDuration >= 330",
+      //                                                      new LolMatch {AccountId = account.Id, Timestamp = beginTime})).ToList();
+      //  matches.AddRange(matchesList);
+      //}
 
-      Globals.LolChampions ??= await _databaseHelpers.LoadLolChampions();
+      //Globals.LolChampions ??= await _databaseHelpers.LoadLolChampions();
 
-      if (matches.Count > 0)
-      {
-        var wins = matches.Count(x => x.Result == "W");
-        var losses = matches.Count(x => x.Result == "L");
+      //if (matches.Count > 0)
+      //{
+      //  var wins = matches.Count(x => x.Result == "W");
+      //  var losses = matches.Count(x => x.Result == "L");
 
-        matches = matches.OrderBy(x => x.Timestamp).ToList();
+      //  matches = matches.OrderBy(x => x.Timestamp).ToList();
 
-        if (matches.Count > 1)
-        {
-          var sb = new StringBuilder();
+      //  if (matches.Count > 1)
+      //  {
+      //    var sb = new StringBuilder();
 
-          foreach (var match in matches)
-          {
-            sb.Append(Globals.LolChampions[match.ChampionId]);
-            sb.Append(" ");
-            sb.Append(match.Result == "W" ? "✔" : "✖");
+      //    foreach (var match in matches)
+      //    {
+      //      sb.Append(Globals.LolChampions[match.ChampionId]);
+      //      sb.Append(" ");
+      //      sb.Append(match.Result == "W" ? "✔" : "✖");
 
-            if (matches.Count < 10)
-            {
-              sb.Append(" ");
-              sb.Append(match.Kda);
-            }
+      //      if (matches.Count < 10)
+      //      {
+      //        sb.Append(" ");
+      //        sb.Append(match.Kda);
+      //      }
 
-            sb.Append("; ");
-          }
+      //      sb.Append("; ");
+      //    }
 
-          sb.Remove(sb.Length - 2, 2);
+      //    sb.Remove(sb.Length - 2, 2);
 
-          var kdaList = matches.Select(x => new Kda(x.Kda)).ToList();
-          var kdaSum = new Kda("0/0/0");
+      //    var kdaList = matches.Select(x => new Kda(x.Kda)).ToList();
+      //    var kdaSum = new Kda("0/0/0");
 
-          foreach (var kda in kdaList)
-          {
-            kdaSum.Add(kda);
-          }
+      //    foreach (var kda in kdaList)
+      //    {
+      //      kdaSum.Add(kda);
+      //    }
 
-          _client.SendMessage(message.Channel,
-                              string.Format(Globals.Locale["lol_show_more_than_one"], wins, losses, sb, kdaSum.ToStringWithRatio(),
-                                            kdaSum.ToStringAverage(matches.Count)));
-        }
-        else
-        {
-          var match = matches[0];
-          var matchKda = new Kda(match.Kda);
-          var matchString = $"{Globals.LolChampions[match.ChampionId]} {(match.Result == "W" ? "✔" : "✖")} {matchKda.ToStringWithRatio()}";
+      //    _client.SendMessage(message.Channel,
+      //                        string.Format(Globals.Locale["lol_show_more_than_one"], wins, losses, sb, kdaSum.ToStringWithRatio(),
+      //                                      kdaSum.ToStringAverage(matches.Count)));
+      //  }
+      //  else
+      //  {
+      //    var match = matches[0];
+      //    var matchKda = new Kda(match.Kda);
+      //    var matchString = $"{Globals.LolChampions[match.ChampionId]} {(match.Result == "W" ? "✔" : "✖")} {matchKda.ToStringWithRatio()}";
 
-          _client.SendMessage(message.Channel, string.Format(Globals.Locale["lol_show_one"], wins, losses, matchString));
-        }
-      }
-      else
-      {
-        _client.SendMessage(message.Channel, Globals.Locale["lol_show_empty"]);
-      }
+      //    _client.SendMessage(message.Channel, string.Format(Globals.Locale["lol_show_one"], wins, losses, matchString));
+      //  }
+      //}
+      //else
+      //{
+      //  _client.SendMessage(message.Channel, Globals.Locale["lol_show_empty"]);
+      //}
+
+      _client.SendMessage(message.Channel, "Podgląd statystyk gier jest tymczasowo niedostępny");
 
       return true;
     }
