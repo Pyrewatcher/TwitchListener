@@ -4,10 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
-using Pyrewatcher.Models;
-using Pyrewatcher.Riot.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -17,9 +15,9 @@ namespace Pyrewatcher.Commands
   {
     private readonly TwitchClient _client;
     private readonly ILogger<RangaCommand> _logger;
-    private readonly RiotAccountRepository _riotAccounts;
+    private readonly IRiotAccountsRepository _riotAccounts;
 
-    public RangaCommand(TwitchClient client, ILogger<RangaCommand> logger, RiotAccountRepository riotAccounts)
+    public RangaCommand(TwitchClient client, ILogger<RangaCommand> logger, IRiotAccountsRepository riotAccounts)
     {
       _client = client;
       _logger = logger;
@@ -34,49 +32,24 @@ namespace Pyrewatcher.Commands
     public override async Task<bool> ExecuteAsync(RangaCommandArguments args, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
+      var accounts = await _riotAccounts.GetActiveAccountsWithRankByBroadcasterIdAsync(broadcasterId);
 
-      var accountsListLol =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount {BroadcasterId = broadcasterId, GameAbbreviation = "lol", Active = true})).ToList();
-      var accountsListTft =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount {BroadcasterId = broadcasterId, GameAbbreviation = "tft", Active = true})).ToList();
-
-      if (accountsListLol.Count > 0 || accountsListTft.Count > 0)
+      if (accounts.Any())
       {
-        var accountStrings = new List<string>();
+        var displayableAccounts = new List<string>();
 
-        foreach (var account in accountsListLol)
+        foreach (var account in accounts)
         {
-          var entry = new LeagueEntryV4Dto
-          {
-            Tier = account.Tier,
-            Rank = account.Rank,
-            LeaguePoints = account.LeaguePoints,
-            Series = new LeagueEntryMiniSeriesV4Dto {Progress = account.SeriesProgress}
-          };
+          var displayableAccountBuilder = new StringBuilder(account.DisplayName == "" ? account.ToStringShort() : account.DisplayName);
+          displayableAccountBuilder.Append(": ");
+          displayableAccountBuilder.Append(account.DisplayableRank ?? Globals.Locale["ranga_value_unavailable"]);
+          displayableAccountBuilder.Append(" ➔ ");
+          displayableAccountBuilder.Append(GenerateAccountUrl(account));
 
-          accountStrings.Add(account.DisplayName == ""
-                               ? $"{account.ToStringShort()}: {entry} ➔ {GenerateAccountUrl(account)}"
-                               : $"{account.DisplayName}: {entry} ➔ {GenerateAccountUrl(account)}");
+          displayableAccounts.Add(displayableAccountBuilder.ToString());
         }
 
-        foreach (var account in accountsListTft)
-        {
-          var entry = new LeagueEntryV4Dto
-          {
-            Tier = account.Tier,
-            Rank = account.Rank,
-            LeaguePoints = account.LeaguePoints,
-            Series = new LeagueEntryMiniSeriesV4Dto {Progress = account.SeriesProgress}
-          };
-
-          accountStrings.Add(account.DisplayName == ""
-                               ? $"{account.ToStringShort()}: {entry} ➔ {GenerateAccountUrl(account)}"
-                               : $"{account.DisplayName}: {entry} ➔ {GenerateAccountUrl(account)}");
-        }
-
-        _client.SendMessage(message.Channel, string.Join(" | ", accountStrings));
+        _client.SendMessage(message.Channel, string.Join(" | ", displayableAccounts));
       }
       else
       {
@@ -88,7 +61,7 @@ namespace Pyrewatcher.Commands
 
     private static string GenerateAccountUrl(RiotAccount account)
     {
-      if (account == null)
+      if (account is null)
       {
         return null;
       }

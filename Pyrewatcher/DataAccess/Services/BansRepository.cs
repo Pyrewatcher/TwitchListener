@@ -16,7 +16,7 @@ namespace Pyrewatcher.DataAccess.Services
     {
       const string query = "SELECT CASE WHEN EXISTS (SELECT * FROM [Bans] WHERE [UserId] = @userId) THEN 1 ELSE 0 END;";
 
-      using var connection = CreateConnection();
+      using var connection = await CreateConnectionAsync();
 
       var result = await connection.QueryFirstAsync<bool>(query, new { userId });
 
@@ -25,9 +25,9 @@ namespace Pyrewatcher.DataAccess.Services
 
     public async Task<bool> BanUserByIdAsync(long userId)
     {
-      const string query = "INSERT INTO [Bans] ([UserId]) VALUES (@userId)";
+      const string query = @"INSERT INTO [Bans] ([UserId]) VALUES (@userId)";
 
-      using var connection = CreateConnection();
+      using var connection = await CreateConnectionAsync();
 
       var rows = await connection.ExecuteAsync(query, new { userId });
 
@@ -38,7 +38,7 @@ namespace Pyrewatcher.DataAccess.Services
     {
       const string query = "DELETE FROM [Bans] WHERE [UserId] = @userId";
 
-      using var connection = CreateConnection();
+      using var connection = await CreateConnectionAsync();
 
       var rows = await connection.ExecuteAsync(query, new { userId });
 

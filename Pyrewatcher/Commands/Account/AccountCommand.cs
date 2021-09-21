@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
 using Pyrewatcher.Riot.Enums;
@@ -20,20 +21,18 @@ namespace Pyrewatcher.Commands
     private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
     private readonly ILogger<AccountCommand> _logger;
-    private readonly RiotAccountRepository _riotAccounts;
-    private readonly RiotLolApiHelper _riotLolApiHelper;
+    private readonly IRiotAccountsRepository _riotAccounts;
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly Utilities _utilities;
     private readonly ISummonerV4Client _summonerV4;
 
-    public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, BroadcasterRepository broadcasters, RiotAccountRepository riotAccounts,
-                          RiotLolApiHelper riotLolApiHelper, RiotTftApiHelper riotTftApiHelper, Utilities utilities, ISummonerV4Client summonerV4)
+    public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, BroadcasterRepository broadcasters,
+                          IRiotAccountsRepository riotAccounts, RiotTftApiHelper riotTftApiHelper, Utilities utilities, ISummonerV4Client summonerV4)
     {
       _client = client;
       _logger = logger;
       _broadcasters = broadcasters;
       _riotAccounts = riotAccounts;
-      _riotLolApiHelper = riotLolApiHelper;
       _riotTftApiHelper = riotTftApiHelper;
       _utilities = utilities;
       _summonerV4 = summonerV4;
@@ -174,13 +173,13 @@ namespace Pyrewatcher.Commands
         case "list": // \account list [Broadcaster]
         {
           // check if Broadcaster is null
-          if (args.Broadcaster != null)
+          if (args.Broadcaster is not null)
           {
             // get given broadcaster
             broadcaster = await _broadcasters.FindWithNameByNameAsync(args.Broadcaster.ToLower());
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
-            if (broadcaster == null)
+            if (broadcaster is null)
             {
               _client.SendMessage(message.Channel,
                                   string.Format(Globals.Locale["account_broadcasterDoesNotExist"], message.DisplayName, args.Broadcaster));
@@ -196,8 +195,7 @@ namespace Pyrewatcher.Commands
           }
 
           // get accounts list
-          accountsList = (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId", new RiotAccount {BroadcasterId = broadcaster.Id}))
-           .ToList();
+          accountsList = (await _riotAccounts.GetAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
           // check if empty
           if (accountsList.Count == 0)
@@ -218,13 +216,13 @@ namespace Pyrewatcher.Commands
         case "listactive": // \account listactive [Broadcaster]
         {
           // check if Broadcaster is null
-          if (args.Broadcaster != null)
+          if (args.Broadcaster is not null)
           {
             // get given broadcaster
             broadcaster = await _broadcasters.FindWithNameByNameAsync(args.Broadcaster);
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
-            if (broadcaster == null)
+            if (broadcaster is null)
             {
               _client.SendMessage(message.Channel,
                                   string.Format(Globals.Locale["account_broadcasterDoesNotExist"], message.DisplayName, args.Broadcaster));
@@ -240,8 +238,7 @@ namespace Pyrewatcher.Commands
           }
 
           // get accounts list
-          accountsList = (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND Active = @Active",
-                                                             new RiotAccount {BroadcasterId = broadcaster.Id, Active = true})).ToList();
+          accountsList = (await _riotAccounts.GetActiveAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
           // check if empty
           if (accountsList.Count == 0)
@@ -263,7 +260,7 @@ namespace Pyrewatcher.Commands
         case "add": // \account add <Game> <Server> <SummonerName>
         {
           // check if game abbreviation exists
-          if (_utilities.GetGameFullName(args.Game.ToLower()) == null)
+          if (_utilities.GetGameFullName(args.Game.ToLower()) is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidGame"], message.DisplayName, args.Game));
             _logger.LogInformation("Game {game} doesn't exist in the database - returning", args.Game);
@@ -274,7 +271,7 @@ namespace Pyrewatcher.Commands
           // check if server exists
           var serverApiCode = _utilities.GetServerApiCode(args.Server.ToUpper());
 
-          if (serverApiCode == null)
+          if (serverApiCode is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidServer"], message.DisplayName, args.Server));
             _logger.LogInformation("Server {server} doesn't exist in the database - returning", args.Server);
@@ -284,17 +281,9 @@ namespace Pyrewatcher.Commands
 
           // check if account already exists in channel's Riot account list
           broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
-          account = await _riotAccounts.FindAsync(
-            "GameAbbreviation = @GameAbbreviation AND ServerCode = @ServerCode AND NormalizedSummonerName = @NormalizedSummonerName AND BroadcasterId = @BroadcasterId",
-            new RiotAccount
-            {
-              GameAbbreviation = args.Game.ToLower(),
-              ServerCode = args.Server.ToUpper(),
-              NormalizedSummonerName = _utilities.NormalizeSummonerName(args.SummonerName),
-              BroadcasterId = broadcaster.Id
-            });
+          account = await _riotAccounts.GetAccountForDisplayByDetailsAsync(args.Game, args.Server, args.SummonerName, broadcaster.Id);
 
-          if (account != null)
+          if (account is not null)
           {
             _client.SendMessage(message.Channel,
                                 string.Format(Globals.Locale["account_add_accountAlreadyExists"], message.DisplayName, account.ToStringShort()));
@@ -304,21 +293,14 @@ namespace Pyrewatcher.Commands
           }
 
           // get data about the account from Riot Summoner API
-          if (args.Game.ToLower() == "lol")
+          data = args.Game.ToLower() switch
           {
-            //data = await _riotLolApiHelper.SummonerGetByName(args.SummonerName, serverApiCode);
-            data = await _summonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server));
-          }
-          else if (args.Game.ToLower() == "tft")
-          {
-            data = await _riotTftApiHelper.SummonerGetByName(args.SummonerName, serverApiCode);
-          }
-          else
-          {
-            data = null;
-          }
+            "lol" => await _summonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true)),
+            "tft" => await _riotTftApiHelper.SummonerGetByName(args.SummonerName, serverApiCode),
+            _ => null
+          };
 
-          if (data == null)
+          if (data is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountLoadingFailed"], message.DisplayName));
             _logger.LogInformation("Loading account data failed - returning");
@@ -326,21 +308,10 @@ namespace Pyrewatcher.Commands
             return false;
           }
 
-          account = new RiotAccount
-          {
-            BroadcasterId = broadcaster.Id,
-            GameAbbreviation = args.Game.ToLower(),
-            SummonerName = data.Name,
-            NormalizedSummonerName = _utilities.NormalizeSummonerName(data.Name),
-            ServerCode = args.Server.ToUpper(),
-            SummonerId = data.SummonerId,
-            AccountId = data.AccountId,
-            Puuid = data.Puuid
-          };
-          await _riotAccounts.InsertAsync(account);
-          account = await _riotAccounts.FindAsync(
-            "SummonerId = @SummonerId AND GameAbbreviation = @GameAbbreviation AND BroadcasterId = @BroadcasterId",
-            new RiotAccount {SummonerId = account.SummonerId, GameAbbreviation = account.GameAbbreviation, BroadcasterId = broadcaster.Id});
+          account = new RiotAccount(broadcaster.Id, args.Game, data.Name, args.Server, data.SummonerId, data.AccountId, data.Puuid);
+
+          await _riotAccounts.InsertAccount(account);
+          
           _client.SendMessage(message.Channel,
                               string.Format(Globals.Locale["account_add_accountAdded"], message.DisplayName, account.ToStringList()));
 
@@ -349,9 +320,9 @@ namespace Pyrewatcher.Commands
         case "remove": // \account remove <AccountId>
         {
           // check if account with given id exists
-          account = await _riotAccounts.FindAsync("Id = @Id", new RiotAccount {Id = args.AccountId});
+          account = await _riotAccounts.GetAccountForDisplayByIdAsync(args.AccountId);
 
-          if (account == null)
+          if (account is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
             _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
@@ -360,40 +331,54 @@ namespace Pyrewatcher.Commands
           }
 
           // delete the account
-          await _riotAccounts.DeleteAsync("Id = @Id", new RiotAccount {Id = args.AccountId});
+          var deleted = await _riotAccounts.DeleteByIdAsync(args.AccountId);
 
-          _client.SendMessage(message.Channel,
-                              string.Format(Globals.Locale["account_remove_accountRemoved"], message.DisplayName, account.ToStringShort()));
+          if (deleted)
+          {
+            _client.SendMessage(message.Channel,
+                                string.Format(Globals.Locale["account_remove_accountRemoved"], message.DisplayName, account.ToStringShort()));
+          }
+          else
+          {
+            // TODO: Message failure
+          }
 
           break;
         }
         case "toggleactive": // \account toggleactive <AccountId>
         {
           // check if account with given id exists
-          account = await _riotAccounts.FindAsync("Id = @Id", new RiotAccount {Id = args.AccountId});
+          account = await _riotAccounts.GetAccountForDisplayByIdAsync(args.AccountId);
 
-          if (account == null)
+          if (account is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
             _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
 
             return false;
           }
+          
+          var toggled = await _riotAccounts.ToggleActiveByIdAsync(args.AccountId);
 
-          account.Active = !account.Active;
-          await _riotAccounts.UpdateAsync(account);
-          _client.SendMessage(message.Channel,
-                              string.Format(Globals.Locale["account_toggleactive_toggled"], message.DisplayName, account.ToStringShort(),
-                                            account.Active ? Globals.Locale["account_value_active"] : Globals.Locale["account_value_inactive"]));
+          if (toggled)
+          {
+            _client.SendMessage(message.Channel,
+                                string.Format(Globals.Locale["account_toggleactive_toggled"], message.DisplayName, account.ToStringShort(),
+                                              account.Active ? Globals.Locale["account_value_active"] : Globals.Locale["account_value_inactive"]));
+          }
+          else
+          {
+            // TODO: Message failure
+          }
 
           break;
         }
         case "display": // \account display <AccountId> <NewDisplayName>
         {
           // check if account with given id exists
-          account = await _riotAccounts.FindAsync("Id = @Id", new RiotAccount {Id = args.AccountId});
+          account = await _riotAccounts.GetAccountForDisplayByIdAsync(args.AccountId);
 
-          if (account == null)
+          if (account is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
             _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
@@ -401,19 +386,26 @@ namespace Pyrewatcher.Commands
             return false;
           }
 
-          account.DisplayName = args.NewDisplayName == "-" ? "" : args.NewDisplayName;
-          await _riotAccounts.UpdateAsync(account);
+          var newDisplayName = args.NewDisplayName == "-" ? "" : args.NewDisplayName;
+          var updated = await _riotAccounts.UpdateDisplayNameByIdAsync(args.AccountId, newDisplayName);
 
-          if (args.NewDisplayName == "-")
+          if (updated)
           {
-            _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_display_cleared"], message.DisplayName, account.ToStringShort()));
+            if (args.NewDisplayName == "-")
+            {
+              _client.SendMessage(message.Channel,
+                                  string.Format(Globals.Locale["account_display_cleared"], message.DisplayName, account.ToStringShort()));
+            }
+            else
+            {
+              _client.SendMessage(message.Channel,
+                                  string.Format(Globals.Locale["account_display_changed"], message.DisplayName, account.ToStringShort(),
+                                                args.NewDisplayName));
+            }
           }
           else
           {
-            _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_display_changed"], message.DisplayName, account.ToStringShort(),
-                                              args.NewDisplayName));
+            // TODO: Message failure
           }
 
           break;
@@ -421,9 +413,9 @@ namespace Pyrewatcher.Commands
         case "update": // \account update <AccountId>
         {
           // check if account with given id exists
-          account = await _riotAccounts.FindAsync("Id = @Id", new RiotAccount {Id = args.AccountId});
+          account = await _riotAccounts.GetAccountForApiCallsByIdAsync(args.AccountId);
 
-          if (account == null)
+          if (account is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
             _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
@@ -431,20 +423,14 @@ namespace Pyrewatcher.Commands
             return false;
           }
 
-          if (account.GameAbbreviation.ToLower() == "lol")
+          data = account.GameAbbreviation.ToLower() switch
           {
-            data = await _summonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode));
-          }
-          else if (account.GameAbbreviation.ToLower() == "tft")
-          {
-            data = await _riotTftApiHelper.SummonerGetByAccountId(account.AccountId, _utilities.GetServerApiCode(account.ServerCode));
-          }
-          else
-          {
-            data = null;
-          }
+            "lol" => await _summonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true)),
+            "tft" => await _riotTftApiHelper.SummonerGetByAccountId(account.AccountId, _utilities.GetServerApiCode(account.ServerCode)),
+            _ => null
+          };
 
-          if (data == null)
+          if (data is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountLoadingFailed"], message.DisplayName));
             _logger.LogInformation("Loading account data failed - returning");
@@ -454,12 +440,17 @@ namespace Pyrewatcher.Commands
 
           if (data.Name != account.SummonerName)
           {
-            var oldSummonerName = account.SummonerName;
-            account.SummonerName = data.Name;
-            account.NormalizedSummonerName = _utilities.NormalizeSummonerName(data.Name);
-            await _riotAccounts.UpdateAsync(account);
-            _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_update_updated"], message.DisplayName, oldSummonerName, account.SummonerName));
+            var updated = await _riotAccounts.UpdateSummonerNameByIdAsync(args.AccountId, data.Name);
+
+            if (updated)
+            {
+              _client.SendMessage(message.Channel,
+                                  string.Format(Globals.Locale["account_update_updated"], message.DisplayName, account.SummonerName, data.Name));
+            }
+            else
+            {
+              // TODO: Message failure
+            }
           }
           else
           {

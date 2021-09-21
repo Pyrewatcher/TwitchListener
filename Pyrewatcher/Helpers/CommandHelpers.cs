@@ -18,7 +18,7 @@ namespace Pyrewatcher.Helpers
     private readonly IBansRepository _bans;
     private readonly IConfiguration _config;
     private readonly LolMatchRepository _lolMatches;
-    private readonly RiotAccountRepository _riotAccounts;
+    private readonly IRiotAccountsRepository _riotAccounts;
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly TftMatchRepository _tftMatches;
     private readonly TwitchApiHelper _twitchApiHelper;
@@ -26,7 +26,7 @@ namespace Pyrewatcher.Helpers
     private readonly IMatchV5Client _matchV5;
     private readonly ILeagueV4Client _leagueV4;
 
-    public CommandHelpers(IBansRepository bans, RiotAccountRepository riotAccounts, LolMatchRepository lolMatches, UserRepository users,
+    public CommandHelpers(IBansRepository bans, IRiotAccountsRepository riotAccounts, LolMatchRepository lolMatches, UserRepository users,
                           TftMatchRepository tftMatches, RiotTftApiHelper riotTftApiHelper, IConfiguration config, TwitchApiHelper twitchApiHelper,
                           IMatchV5Client matchV5, ILeagueV4Client leagueV4)
     {
@@ -72,7 +72,7 @@ namespace Pyrewatcher.Helpers
 
     public void LoadChattersFromChattersResponse(ChattersResponse response)
     {
-      if (response.Chatters == null)
+      if (response.Chatters is null)
       {
         return;
       }
@@ -104,20 +104,18 @@ namespace Pyrewatcher.Helpers
       {
         return;
       }
-
-      var accountsList =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount {BroadcasterId = broadcaster.Id, GameAbbreviation = "lol", Active = true})).ToList();
+      
+      var accounts = (await _riotAccounts.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
-      if (accountsList.Count == 0)
+      if (!accounts.Any())
       {
         return;
       }
       
       var matchesToRequest = new List<(RiotAccount, string)>();
 
-      foreach (var account in accountsList)
+      foreach (var account in accounts)
       {
         var matches = await _matchV5.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, RiotUtilities.GetStartTime()); // TODO: Set routing value depending on server
 
@@ -181,23 +179,21 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accountsList =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount {BroadcasterId = broadcaster.Id, GameAbbreviation = "tft", Active = true})).ToList();
+      var accounts = (await _riotAccounts.GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
-      if (accountsList.Count == 0)
+      if (!accounts.Any())
       {
         return;
       }
 
-      var matchlists = await _riotTftApiHelper.MatchGetMatchlistsByRiotAccountsList(accountsList);
+      var matchlists = await _riotTftApiHelper.MatchGetMatchlistsByRiotAccountsList(accounts);
 
-      var zippedList = accountsList.Zip(matchlists).ToList();
+      var zippedList = accounts.Zip(matchlists).ToList();
 
       foreach ((var account, var matchlist) in zippedList)
       {
-        if (matchlist.Count > 0)
+        if (matchlist.Any())
         {
           var matches = matchlist.Select(x => new TftMatch {AccountId = account.Id, MatchId = x}).ToList();
           await _tftMatches.InsertRangeIfNotExistsAsync(matches);
@@ -206,7 +202,7 @@ namespace Pyrewatcher.Helpers
 
       var matchesToUpdate = (await _tftMatches.FindRangeAsync("Place = @Place", new TftMatch {Place = 0})).ToList();
 
-      if (matchesToUpdate.Count > 0)
+      if (matchesToUpdate.Any())
       {
         var matchDataList = await _riotTftApiHelper.MatchGetByMatchesList(matchesToUpdate);
 
@@ -214,21 +210,21 @@ namespace Pyrewatcher.Helpers
 
         foreach ((var match, var matchData) in zippedMatchList)
         {
-          if (matchData.Info == null)
+          if (matchData.Info is null)
           {
             continue;
           }
 
-          var account = accountsList.Find(x => x.Id == matchesToUpdate.Find(y => y.MatchId == matchData.Metadata.Match_Id).AccountId);
+          var account = accounts.Find(x => x.Id == matchesToUpdate.Find(y => y.MatchId == matchData.Metadata.Match_Id).AccountId);
 
-          if (account == null)
+          if (account is null)
           {
             continue;
           }
 
           var participant = matchData.Info.Participants.Find(x => x.Puuid == account.Puuid);
 
-          if (participant == null)
+          if (participant is null)
           {
             continue;
           }
@@ -257,18 +253,17 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accountsList =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount {BroadcasterId = broadcaster.Id, GameAbbreviation = "lol", Active = true})).ToList();
+      var accounts = (await _riotAccounts.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
-      if (accountsList.Count == 0)
+      // skip if no active accounts for update
+      if (!accounts.Any())
       {
         return;
       }
 
-      foreach (var account in accountsList)
+      foreach (var account in accounts)
       {
-        var leagueEntries = await _leagueV4.GetLeagueEntriesBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode));
+        var leagueEntries = await _leagueV4.GetLeagueEntriesBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode, true));
 
         var entry = leagueEntries.FirstOrDefault(x => x.QueueType == "RANKED_SOLO_5x5");
 
@@ -276,12 +271,13 @@ namespace Pyrewatcher.Helpers
         {
           continue;
         }
+        
+        var updated = await _riotAccounts.UpdateRankByIdAsync(account.Id, entry.Tier, entry.Rank, entry.LeaguePoints, entry.SeriesProgress);
 
-        account.Tier = entry.Tier;
-        account.Rank = entry.Rank;
-        account.LeaguePoints = entry.LeaguePoints;
-        account.SeriesProgress = entry.SeriesProgress;
-        await _riotAccounts.UpdateAsync(account);
+        if (!updated)
+        {
+          // TODO: Log failure
+        }
       }
     }
 
@@ -301,30 +297,31 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accountsList =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount {BroadcasterId = broadcaster.Id, GameAbbreviation = "tft", Active = true})).ToList();
+      var accounts = (await _riotAccounts.GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
-      if (accountsList.Count == 0)
+      // skip if no active accounts for update
+      if (!accounts.Any())
       {
         return;
       }
 
-      var entriesList = await _riotTftApiHelper.LeagueGetByRiotAccountsList(accountsList);
+      var entriesList = await _riotTftApiHelper.LeagueGetByRiotAccountsList(accounts);
 
-      var zippedList = accountsList.Zip(entriesList).ToList();
+      var zippedList = accounts.Zip(entriesList).ToList();
 
       foreach ((var account, var entry) in zippedList)
       {
-        if (entry.Tier == null || entry.Rank == null || entry.LeaguePoints == null)
+        if (entry.Tier is null || entry.Rank is null || entry.LeaguePoints is null)
         {
           continue;
         }
+        
+        var updated = await _riotAccounts.UpdateRankByIdAsync(account.Id, entry.Tier, entry.Rank, entry.LeaguePoints, null);
 
-        account.Tier = entry.Tier;
-        account.Rank = entry.Rank;
-        account.LeaguePoints = entry.LeaguePoints;
-        await _riotAccounts.UpdateAsync(account);
+        if (!updated)
+        {
+          // TODO: Log failure
+        }
       }
     }
 
@@ -342,7 +339,7 @@ namespace Pyrewatcher.Helpers
 
       var user = await _users.FindAsync("Name = @Name", new User {Name = userName});
 
-      if (user == null) // user does not exist in the database - retrieve user id from Twitch API
+      if (user is null) // user does not exist in the database - retrieve user id from Twitch API
       {
         user = await _twitchApiHelper.GetUserByName(userName);
 
@@ -351,7 +348,7 @@ namespace Pyrewatcher.Helpers
           return null;
         }
 
-        if (await _users.FindAsync("Id = @Id", user) != null)
+        if (await _users.FindAsync("Id = @Id", user) is not null)
         {
           await _users.UpdateAsync(user);
         }

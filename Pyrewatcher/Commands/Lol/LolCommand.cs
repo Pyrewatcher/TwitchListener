@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
@@ -17,10 +18,10 @@ namespace Pyrewatcher.Commands
     private readonly DatabaseHelpers _databaseHelpers;
     private readonly ILogger<LolCommand> _logger;
     private readonly LolMatchRepository _lolMatches;
-    private readonly RiotAccountRepository _riotAccounts;
+    private readonly IRiotAccountsRepository _riotAccounts;
     private readonly Utilities _utilities;
 
-    public LolCommand(TwitchClient client, ILogger<LolCommand> logger, RiotAccountRepository riotAccounts, LolMatchRepository lolMatches,
+    public LolCommand(TwitchClient client, ILogger<LolCommand> logger, IRiotAccountsRepository riotAccounts, LolMatchRepository lolMatches,
                       Utilities utilities, DatabaseHelpers databaseHelpers)
     {
       _client = client;
@@ -39,15 +40,13 @@ namespace Pyrewatcher.Commands
     public override async Task<bool> ExecuteAsync(LolCommandArguments args, ChatMessage message)
     {
       var beginTime = _utilities.GetBeginTime();
-
-      var accountsList =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount { BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true }))
-       .ToList();
+      
+      var broadcasterId = long.Parse(message.RoomId);
+      var accounts = await _riotAccounts.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
       var matches = new List<LolMatch>();
 
-      foreach (var account in accountsList)
+      foreach (var account in accounts)
       {
         var matchesList = (await _lolMatches.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp AND GameDuration >= 330",
                                                             new LolMatch { AccountId = account.Id, Timestamp = beginTime })).ToList();
@@ -56,7 +55,7 @@ namespace Pyrewatcher.Commands
 
       Globals.LolChampions ??= await _databaseHelpers.LoadLolChampions();
 
-      if (matches.Count > 0)
+      if (matches.Any())
       {
         var wins = matches.Count(x => x.Result == "W");
         var losses = matches.Count(x => x.Result == "L");

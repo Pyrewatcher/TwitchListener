@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -15,10 +15,10 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly ILogger<BanyCommand> _logger;
     private readonly LolChampionRepository _lolChampions;
-    private readonly RiotAccountRepository _riotAccounts;
+    private readonly IRiotAccountsRepository _riotAccounts;
     private readonly RiotLolApiHelper _riotLolApiHelper;
 
-    public BanyCommand(TwitchClient client, ILogger<BanyCommand> logger, LolChampionRepository lolChampions, RiotAccountRepository riotAccounts,
+    public BanyCommand(TwitchClient client, ILogger<BanyCommand> logger, LolChampionRepository lolChampions, IRiotAccountsRepository riotAccounts,
                        RiotLolApiHelper riotLolApiHelper)
     {
       _client = client;
@@ -35,14 +35,12 @@ namespace Pyrewatcher.Commands
 
     public override async Task<bool> ExecuteAsync(BanyCommandArguments args, ChatMessage message)
     {
-      var accountsList =
-        (await _riotAccounts.FindRangeAsync("BroadcasterId = @BroadcasterId AND GameAbbreviation = @GameAbbreviation AND Active = @Active",
-                                            new RiotAccount { BroadcasterId = long.Parse(message.RoomId), GameAbbreviation = "lol", Active = true }))
-       .ToList();
+      var broadcasterId = long.Parse(message.RoomId);
+      var accounts = await _riotAccounts.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
-      (var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accountsList);
+      (var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accounts.ToList());
 
-      if (gameInfo == null)
+      if (gameInfo is null)
       {
         _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response_noactivegame"], message.Channel));
       }
@@ -50,7 +48,7 @@ namespace Pyrewatcher.Commands
       {
         var streamer = gameInfo.Participants.Find(x => x.SummonerId == activeAccount.SummonerId);
 
-        if (streamer == null)
+        if (streamer is null)
         {
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["bany_response_noactivegame"], message.Channel));
 

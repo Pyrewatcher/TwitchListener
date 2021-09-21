@@ -51,12 +51,5 @@ namespace Pyrewatcher.Helpers
         return new DateTimeOffset(today.Year, today.Month, today.Day, 4, 00, 00, TimeSpan.Zero).ToUnixTimeMilliseconds();
       }
     }
-
-    public string NormalizeSummonerName(string summonerName)
-    {
-      var output = summonerName.Replace(" ", "").ToLower();
-
-      return output;
-    }
   }
 }

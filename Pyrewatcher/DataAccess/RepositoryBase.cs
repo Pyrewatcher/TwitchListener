@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
 namespace Pyrewatcher.DataAccess
@@ -18,10 +19,10 @@ namespace Pyrewatcher.DataAccess
       return new SqlConnection(_config.GetConnectionString("Database"));
     }
 
-    protected IDbConnection CreateConnection()
+    protected async Task<IDbConnection> CreateConnectionAsync()
     {
       var conn = SqlConnection();
-      conn.Open();
+      await conn.OpenAsync();
 
       return conn;
     }
