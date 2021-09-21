@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -11,12 +10,12 @@ namespace Pyrewatcher.Commands
 {
   public class UserCommand : CommandBase<UserCommandArguments>
   {
-    private readonly BanRepository _bans;
+    private readonly IBansRepository _bans;
     private readonly TwitchClient _client;
     private readonly CommandHelpers _commandHelpers;
     private readonly ILogger<UserCommand> _logger;
 
-    public UserCommand(TwitchClient client, ILogger<UserCommand> logger, BanRepository bans, CommandHelpers commandHelpers)
+    public UserCommand(TwitchClient client, ILogger<UserCommand> logger, IBansRepository bans, CommandHelpers commandHelpers)
     {
       _client = client;
       _logger = logger;
@@ -50,7 +49,7 @@ namespace Pyrewatcher.Commands
       }
 
       _client.SendMessage(message.Channel,
-                          await _bans.FindAsync("UserId = @UserId", new Ban {UserId = user.Id}) != null
+                          await _bans.IsUserBannedByIdAsync(user.Id)
                             ? string.Format(Globals.Locale["user_banned"], message.DisplayName, user.DisplayName)
                             : string.Format(Globals.Locale[$"user_is{user.Role.ToLower()}"], message.DisplayName, user.DisplayName));
 

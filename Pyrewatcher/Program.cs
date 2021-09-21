@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Pyrewatcher.DataAccess.Interfaces;
+using Pyrewatcher.DataAccess.Services;
 using Pyrewatcher.Handlers;
 using Pyrewatcher.Helpers;
 using Pyrewatcher.Riot.Interfaces;
@@ -119,12 +121,19 @@ namespace Pyrewatcher
                                                   .GetTypes()
                                                   .Where(x => x.IsClass)
                                                   .Where(x => x.Name.EndsWith("Repository") && x.Name != "Repository")
+                                                   // omit classes being part of the refactor
+                                                  .Where(x => x.Name != "BansRepository")
+                                                   // refactor part end
                                                   .ToList();
 
                     foreach (var repositoryType in repositoryTypes)
                     {
                       services.AddSingleton(repositoryType);
                     }
+                    
+                    // register classes being part of the refactor separately
+                    services.AddTransient<IBansRepository, BansRepository>();
+                    // refactor part end
 
                     services.AddSingleton<Bot>();
                   });

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
 using Pyrewatcher.Riot.Enums;
@@ -14,7 +15,7 @@ namespace Pyrewatcher.Helpers
 {
   public class CommandHelpers
   {
-    private readonly BanRepository _bans;
+    private readonly IBansRepository _bans;
     private readonly IConfiguration _config;
     private readonly LolMatchRepository _lolMatches;
     private readonly RiotAccountRepository _riotAccounts;
@@ -25,7 +26,7 @@ namespace Pyrewatcher.Helpers
     private readonly IMatchV5Client _matchV5;
     private readonly ILeagueV4Client _leagueV4;
 
-    public CommandHelpers(BanRepository bans, RiotAccountRepository riotAccounts, LolMatchRepository lolMatches, UserRepository users,
+    public CommandHelpers(IBansRepository bans, RiotAccountRepository riotAccounts, LolMatchRepository lolMatches, UserRepository users,
                           TftMatchRepository tftMatches, RiotTftApiHelper riotTftApiHelper, IConfiguration config, TwitchApiHelper twitchApiHelper,
                           IMatchV5Client matchV5, ILeagueV4Client leagueV4)
     {
@@ -43,7 +44,7 @@ namespace Pyrewatcher.Helpers
 
     public async Task<bool> IsUserPermitted(User user, Command command)
     {
-      if (await _bans.FindAsync("UserId = @UserId", new Ban {UserId = user.Id}) != null)
+      if (await _bans.IsUserBannedByIdAsync(user.Id))
       {
         return false;
       }
