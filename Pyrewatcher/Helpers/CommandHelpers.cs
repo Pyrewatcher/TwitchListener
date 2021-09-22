@@ -265,7 +265,7 @@ namespace Pyrewatcher.Helpers
       {
         var leagueEntries = await _leagueV4.GetLeagueEntriesBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode, true));
 
-        var entry = leagueEntries.FirstOrDefault(x => x.QueueType == "RANKED_SOLO_5x5");
+        var entry = leagueEntries?.FirstOrDefault(x => x.QueueType == "RANKED_SOLO_5x5");
 
         if (entry is null)
         {

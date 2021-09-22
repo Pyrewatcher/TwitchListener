@@ -122,6 +122,7 @@ namespace Pyrewatcher
                                                   .Where(x => x.IsClass)
                                                   .Where(x => x.Name.EndsWith("Repository") && x.Name != "Repository")
                                                    // omit classes being part of the refactor
+                                                  .Where(x => x.Name != "AliasesRepository")
                                                   .Where(x => x.Name != "BansRepository")
                                                   .Where(x => x.Name != "RiotAccountsRepository")
                                                   // refactor part end
@@ -133,6 +134,7 @@ namespace Pyrewatcher
                     }
                     
                     // register classes being part of the refactor separately
+                    services.AddTransient<IAliasesRepository, AliasesRepository>();
                     services.AddTransient<IBansRepository, BansRepository>();
                     services.AddTransient<IRiotAccountsRepository, RiotAccountsRepository>();
                     // refactor part end

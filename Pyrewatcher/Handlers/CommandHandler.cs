@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client.Models;
@@ -13,7 +14,7 @@ namespace Pyrewatcher.Handlers
 {
   public class CommandHandler
   {
-    private readonly AliasRepository _aliases;
+    private readonly IAliasesRepository _aliases;
     private readonly Dictionary<string, dynamic> _commandClasses = new();
     private readonly CommandHelpers _commandHelpers;
     private readonly CommandRepository _commands;
@@ -23,7 +24,7 @@ namespace Pyrewatcher.Handlers
     private readonly TemplateCommandHandler _templateCommandHandler;
     private readonly UserRepository _users;
 
-    public CommandHandler(IHost host, ILogger<CommandHandler> logger, TemplateCommandHandler templateCommandHandler, AliasRepository aliases,
+    public CommandHandler(IHost host, ILogger<CommandHandler> logger, TemplateCommandHandler templateCommandHandler, IAliasesRepository aliases,
                           CommandRepository commands, CommandHelpers commandHelpers, UserRepository users,
                           LatestCommandExecutionRepository latestCommandExecutions)
     {
@@ -55,12 +56,11 @@ namespace Pyrewatcher.Handlers
       var sw = Stopwatch.StartNew();
 
       // Check if command is a valid alias for the broadcaster
-      var alias = await _aliases.FindAsync("Name = @Name AND (BroadcasterId = 0 OR BroadcasterId = @BroadcasterId)",
-                                           new Alias {Name = commandText, BroadcasterId = broadcasterId});
+      var aliasCommand = await _aliases.GetAliasCommandWithNameByBroadcasterIdAsync(commandText, broadcasterId);
 
-      if (alias != null)
+      if (aliasCommand is not null)
       {
-        commandText = alias.NewName.ToLower();
+        commandText = aliasCommand.ToLower();
       }
       else if (command.CommandIdentifier == '!')
       {

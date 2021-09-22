@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -11,13 +12,13 @@ namespace Pyrewatcher.Commands
 {
   public class AliasCommand : CommandBase<AliasCommandArguments>
   {
-    private readonly AliasRepository _aliases;
+    private readonly IAliasesRepository _aliases;
     private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
     private readonly CommandRepository _commands;
     private readonly ILogger<AliasCommand> _logger;
 
-    public AliasCommand(TwitchClient client, ILogger<AliasCommand> logger, BroadcasterRepository broadcasters, AliasRepository aliases,
+    public AliasCommand(TwitchClient client, ILogger<AliasCommand> logger, BroadcasterRepository broadcasters, IAliasesRepository aliases,
                         CommandRepository commands)
     {
       _client = client;
@@ -123,7 +124,7 @@ namespace Pyrewatcher.Commands
     {
       Broadcaster broadcaster;
       List<string> aliasesList;
-      Alias alias;
+      bool created;
 
       switch (args.Action)
       {
@@ -149,14 +150,10 @@ namespace Pyrewatcher.Commands
           }
 
           // get aliases list
-          aliasesList = (await _aliases.FindRangeAsync("NewName = @NewName AND BroadcasterId = @BroadcasterId",
-                                                       new Alias {NewName = args.Command.TrimStart('\\'), BroadcasterId = broadcaster.Id}))
-                       .Select(x => x.Name)
-                       .OrderBy(x => x)
-                       .ToList();
+          aliasesList = (await _aliases.GetAliasesForCommandByBroadcasterIdAsync(args.Command.TrimStart('\\'), broadcaster.Id)).ToList();
 
           // check if empty
-          if (aliasesList.Count == 0)
+          if (!aliasesList.Any())
           {
             // send message alias_lookupchannel_empty
             _client.SendMessage(message.Channel,
@@ -180,14 +177,10 @@ namespace Pyrewatcher.Commands
           break;
         case "lookupglobal": // \account lookupglobal <Command>
           // get aliases list
-          aliasesList =
-            (await _aliases.FindRangeAsync("NewName = @NewName AND BroadcasterId = 0", new Alias {NewName = args.Command.TrimStart('\\')}))
-           .Select(x => x.Name)
-           .OrderBy(x => x)
-           .ToList();
+          aliasesList = (await _aliases.GetGlobalAliasesForCommandAsync(args.Command.TrimStart('\\'))).ToList();
 
           // check if empty
-          if (aliasesList.Count == 0)
+          if (!aliasesList.Any())
           {
             // send message alias_lookupglobal_empty
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["alias_lookupglobal_empty"], message.DisplayName, args.Command));
@@ -211,8 +204,7 @@ namespace Pyrewatcher.Commands
           broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
 
           // check if a channel or global alias already exists in the database
-          if (await _aliases.FindAsync("Name = @Name AND (BroadcasterId = 0 OR BroadcasterId = @BroadcasterId)",
-                                       new Alias {Name = args.Alias, BroadcasterId = broadcaster.Id}) != null)
+          if (await _aliases.ExistsAnyAliasWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id))
           {
             _logger.LogInformation(
               "Alias \"{alias}\" already exists for broadcaster \"{broadcaster}\" or there is a global alias with that name - returning", args.Alias,
@@ -235,17 +227,23 @@ namespace Pyrewatcher.Commands
           }
 
           // create the alias and add it to database
-          alias = new Alias {Name = args.Alias, NewName = args.Command, BroadcasterId = broadcaster.Id};
-          await _aliases.InsertAsync(alias);
+          created = await _aliases.CreateChannelAliasAsync(broadcaster.Id, args.Alias, args.Command);
 
           // send the message
-          _client.SendMessage(message.Channel,
-                              string.Format(Globals.Locale["alias_create"], message.DisplayName, args.Alias, args.Command, broadcaster.DisplayName));
+          if (created)
+          {
+            _client.SendMessage(message.Channel,
+                                string.Format(Globals.Locale["alias_create"], message.DisplayName, args.Alias, args.Command, broadcaster.DisplayName));
+          }
+          else
+          {
+            // TODO: Message failure
+          }
 
           break;
         case "createglobal": // \alias createglobal <Alias> <Command>
           // check if alias with given alias name already exists in the database
-          if (await _aliases.FindAsync("Name = @Name", new Alias {Name = args.Alias}) != null)
+          if (await _aliases.ExistsAnyAliasWithNameAsync(args.Alias))
           {
             _logger.LogInformation("Alias \"{alias}\" already exists in the database - returning", args.Alias);
 
@@ -264,21 +262,26 @@ namespace Pyrewatcher.Commands
           }
 
           // create the alias and add it to database
-          alias = new Alias {Name = args.Alias, NewName = args.Command, BroadcasterId = 0};
-          await _aliases.InsertAsync(alias);
+          created = await _aliases.CreateGlobalAliasAsync(args.Alias, args.Command);
 
           // send the message
-          _client.SendMessage(message.Channel, string.Format(Globals.Locale["alias_createglobal"], message.DisplayName, args.Alias, args.Command));
+          if (created)
+          {
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["alias_createglobal"], message.DisplayName, args.Alias, args.Command));
+          }
+          else
+          {
+            // TODO: Message failure
+          }
 
           break;
         case "delete": // \alias delete <Alias>
           broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
 
-          // retrieve the alias
-          alias = await _aliases.FindAsync("Name = @Name AND (BroadcasterId = 0 OR BroadcasterId = @BroadcasterId)",
-                                           new Alias {Name = args.Alias, BroadcasterId = broadcaster.Id});
+          // get alias id
+          var aliasId = await _aliases.GetAliasIdWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id);
 
-          if (alias == null)
+          if (aliasId is null)
           {
             _logger.LogInformation(
               "Alias \"{alias}\" does not exist for broadcaster \"{broadcaster}\" and there is no global alias with that name - returning",
@@ -288,10 +291,17 @@ namespace Pyrewatcher.Commands
           }
 
           // delete the alias
-          await _aliases.DeleteAsync("Name = @Name AND (BroadcasterId = 0 OR BroadcasterId = @BroadcasterId)", alias);
+          var deleted = await _aliases.DeleteByIdAsync(aliasId.Value);
 
           // send the message
-          _client.SendMessage(message.Channel, string.Format(Globals.Locale["alias_delete"], message.DisplayName, args.Alias));
+          if (deleted)
+          {
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["alias_delete"], message.DisplayName, args.Alias));
+          }
+          else
+          {
+            // TODO: Message failure
+          }
 
           break;
       }
