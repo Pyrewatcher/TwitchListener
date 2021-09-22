@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
@@ -14,11 +13,11 @@ namespace Pyrewatcher.Commands
   {
     private readonly TwitchClient _client;
     private readonly ILogger<BanyCommand> _logger;
-    private readonly LolChampionRepository _lolChampions;
+    private readonly ILolChampionsRepository _lolChampions;
     private readonly IRiotAccountsRepository _riotAccounts;
     private readonly RiotLolApiHelper _riotLolApiHelper;
 
-    public BanyCommand(TwitchClient client, ILogger<BanyCommand> logger, LolChampionRepository lolChampions, IRiotAccountsRepository riotAccounts,
+    public BanyCommand(TwitchClient client, ILogger<BanyCommand> logger, ILolChampionsRepository lolChampions, IRiotAccountsRepository riotAccounts,
                        RiotLolApiHelper riotLolApiHelper)
     {
       _client = client;
@@ -57,14 +56,14 @@ namespace Pyrewatcher.Commands
 
         var allyBansIds = gameInfo.BannedChampions.Where(x => x.TeamId == streamer.TeamId).OrderBy(x => x.PickTurn).ToList();
         var enemyBansIds = gameInfo.BannedChampions.Except(allyBansIds).OrderBy(x => x.PickTurn).ToList();
-
-        var champions = (await _lolChampions.FindRangeByIdAsync(gameInfo.BannedChampions.Select(x => x.ChampionId))).ToList();
-
+        
         var allyBans = new List<string>();
+
+        Globals.LolChampions ??= await _lolChampions.GetAllAsync();
 
         foreach (var bannedChampion in allyBansIds)
         {
-          var champion = champions.Find(x => x.Id == bannedChampion.ChampionId)?.Name ?? "Unknown";
+          var champion = Globals.LolChampions.ContainsKey(bannedChampion.ChampionId) ? Globals.LolChampions[bannedChampion.ChampionId] : "Unknown";
           allyBans.Add(champion);
         }
 
@@ -72,7 +71,7 @@ namespace Pyrewatcher.Commands
 
         foreach (var bannedChampion in enemyBansIds)
         {
-          var champion = champions.Find(x => x.Id == bannedChampion.ChampionId)?.Name ?? "Unknown";
+          var champion = Globals.LolChampions.ContainsKey(bannedChampion.ChampionId) ? Globals.LolChampions[bannedChampion.ChampionId] : "Unknown";
           enemyBans.Add(champion);
         }
 

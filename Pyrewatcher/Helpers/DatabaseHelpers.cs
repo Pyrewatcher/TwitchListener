@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
 
@@ -9,17 +7,14 @@ namespace Pyrewatcher.Helpers
   public class DatabaseHelpers
   {
     private readonly BroadcasterRepository _broadcasters;
-    private readonly LolChampionRepository _lolChampions;
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly UserRepository _users;
 
-    public DatabaseHelpers(BroadcasterRepository broadcasters, UserRepository users, TwitchApiHelper twitchApiHelper,
-                           LolChampionRepository lolChampions)
+    public DatabaseHelpers(BroadcasterRepository broadcasters, UserRepository users, TwitchApiHelper twitchApiHelper)
     {
       _broadcasters = broadcasters;
       _users = users;
       _twitchApiHelper = twitchApiHelper;
-      _lolChampions = lolChampions;
     }
 
     public async Task<Broadcaster> GetBroadcaster(string broadcasterName)
@@ -49,13 +44,6 @@ namespace Pyrewatcher.Helpers
       await _broadcasters.InsertAsync(broadcaster);
 
       return broadcaster;
-    }
-
-    public async Task<Dictionary<long, string>> LoadLolChampions()
-    {
-      var lolChampions = (await _lolChampions.FindAllAsync()).ToDictionary(champion => champion.Id, champion => champion.Name);
-
-      return lolChampions;
     }
   }
 }

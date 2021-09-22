@@ -15,21 +15,21 @@ namespace Pyrewatcher.Commands
   public class LolCommand : CommandBase<LolCommandArguments>
   {
     private readonly TwitchClient _client;
-    private readonly DatabaseHelpers _databaseHelpers;
     private readonly ILogger<LolCommand> _logger;
     private readonly LolMatchRepository _lolMatches;
+    private readonly ILolChampionsRepository _lolChampions;
     private readonly IRiotAccountsRepository _riotAccounts;
     private readonly Utilities _utilities;
 
     public LolCommand(TwitchClient client, ILogger<LolCommand> logger, IRiotAccountsRepository riotAccounts, LolMatchRepository lolMatches,
-                      Utilities utilities, DatabaseHelpers databaseHelpers)
+                      ILolChampionsRepository lolChampions, Utilities utilities)
     {
       _client = client;
       _logger = logger;
       _riotAccounts = riotAccounts;
       _lolMatches = lolMatches;
+      _lolChampions = lolChampions;
       _utilities = utilities;
-      _databaseHelpers = databaseHelpers;
     }
 
     public override LolCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
@@ -53,7 +53,7 @@ namespace Pyrewatcher.Commands
         matches.AddRange(matchesList);
       }
 
-      Globals.LolChampions ??= await _databaseHelpers.LoadLolChampions();
+      Globals.LolChampions ??= await _lolChampions.GetAllAsync();
 
       if (matches.Any())
       {
