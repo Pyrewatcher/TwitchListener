@@ -19,14 +19,14 @@ namespace Pyrewatcher.Handlers
     private readonly CommandHelpers _commandHelpers;
     private readonly CommandRepository _commands;
     private readonly IHost _host;
-    private readonly LatestCommandExecutionRepository _latestCommandExecutions;
+    private readonly ILatestCommandExecutionsRepository _latestCommandExecutions;
     private readonly ILogger<CommandHandler> _logger;
     private readonly TemplateCommandHandler _templateCommandHandler;
     private readonly UserRepository _users;
 
     public CommandHandler(IHost host, ILogger<CommandHandler> logger, TemplateCommandHandler templateCommandHandler, IAliasesRepository aliases,
                           CommandRepository commands, CommandHelpers commandHelpers, UserRepository users,
-                          LatestCommandExecutionRepository latestCommandExecutions)
+                          ILatestCommandExecutionsRepository latestCommandExecutions)
     {
       _host = host;
       _logger = logger;
@@ -116,17 +116,13 @@ namespace Pyrewatcher.Handlers
       }
 
       // Check if command is on cooldown - skip if sender is administrator, return if not and if command is on cooldown
-      var commandExecution = await _latestCommandExecutions.FindAsync("[BroadcasterId] = @BroadcasterId AND [CommandId] = @CommandId",
-                                                                      new LatestCommandExecution
-                                                                      {
-                                                                        BroadcasterId = broadcasterId, CommandId = commandData.Id
-                                                                      });
+      var latestExecution = await _latestCommandExecutions.GetLatestExecutionAsync(broadcasterId, commandData.Id);
 
       if (!sender.IsAdministrator)
       {
-        if (commandExecution != null)
+        if (latestExecution is not null)
         {
-          var lastUsage = DateTime.Now - DateTime.Parse(commandExecution.LatestExecution);
+          var lastUsage = DateTime.UtcNow - latestExecution.Value;
           var cooldown = TimeSpan.FromSeconds(commandData.Cooldown);
 
           if (lastUsage < cooldown)
@@ -172,19 +168,23 @@ namespace Pyrewatcher.Handlers
       // Update command and latest execution
       await _commands.UpdateAsync(commandData);
 
-      if (commandExecution == null)
+      if (latestExecution == null)
       {
-        await _latestCommandExecutions.InsertAsync(new LatestCommandExecution
+        var inserted = await _latestCommandExecutions.InsertLatestExecution(broadcasterId, commandData.Id, DateTime.UtcNow);
+
+        if (!inserted)
         {
-          BroadcasterId = broadcasterId,
-          CommandId = commandData.Id,
-          LatestExecution = DateTime.UtcNow.ToString("O")
-        });
+          // TODO: Log failure
+        }
       }
       else
       {
-        commandExecution.LatestExecution = DateTime.UtcNow.ToString("O");
-        await _latestCommandExecutions.UpdateAsync(commandExecution);
+        var updated = await _latestCommandExecutions.UpdateLatestExecution(broadcasterId, commandData.Id, DateTime.UtcNow);
+
+        if (!updated)
+        {
+          // TODO: Log failure
+        }
       }
       //_logger.LogDebug("Last usage of command \\{command} updated in the database", command.Name);
     }

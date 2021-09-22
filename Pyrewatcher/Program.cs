@@ -124,6 +124,7 @@ namespace Pyrewatcher
                                                    // omit classes being part of the refactor
                                                   .Where(x => x.Name != "AliasesRepository")
                                                   .Where(x => x.Name != "BansRepository")
+                                                  .Where(x => x.Name != "LatestCommandExecutionsRepository")
                                                   .Where(x => x.Name != "LocalizationRepository")
                                                   .Where(x => x.Name != "LolChampionsRepository")
                                                   .Where(x => x.Name != "LolRunesRepository")
@@ -140,6 +141,7 @@ namespace Pyrewatcher
                     services.AddTransient<IAliasesRepository, AliasesRepository>();
                     services.AddTransient<IBansRepository, BansRepository>();
                     services.AddTransient<ILocalizationRepository, LocalizationRepository>();
+                    services.AddTransient<ILatestCommandExecutionsRepository, LatestCommandExecutionsRepository>();
                     services.AddTransient<ILolChampionsRepository, LolChampionsRepository>();
                     services.AddTransient<ILolRunesRepository, LolRunesRepository>();
                     services.AddTransient<IRiotAccountsRepository, RiotAccountsRepository>();
