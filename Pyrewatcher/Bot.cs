@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Handlers;
-using Pyrewatcher.Helpers;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -18,21 +18,21 @@ namespace Pyrewatcher
   {
     private readonly ActionHandler _actionHandler;
     private readonly BroadcasterRepository _broadcasters;
+    private readonly ILocalizationRepository _localization;
     private readonly TwitchClient _client;
     private readonly CommandHandler _commandHandler;
     private readonly IConfiguration _configuration;
     private readonly CyclicTasksHandler _cyclicTasksHandler;
-    private readonly DatabaseHelpers _databaseHelpers;
     private readonly ILogger<Bot> _logger;
 
-    public Bot(TwitchClient client, IConfiguration configuration, ILogger<Bot> logger, BroadcasterRepository broadcasters,
-               DatabaseHelpers databaseHelpers, CommandHandler commandHandler, ActionHandler actionHandler, CyclicTasksHandler cyclicTasksHandler)
+    public Bot(TwitchClient client, IConfiguration configuration, ILocalizationRepository localization, ILogger<Bot> logger,
+               BroadcasterRepository broadcasters, CommandHandler commandHandler, ActionHandler actionHandler, CyclicTasksHandler cyclicTasksHandler)
     {
       _client = client;
       _configuration = configuration;
+      _localization = localization;
       _logger = logger;
       _broadcasters = broadcasters;
-      _databaseHelpers = databaseHelpers;
       _commandHandler = commandHandler;
       _actionHandler = actionHandler;
       _cyclicTasksHandler = cyclicTasksHandler;
@@ -56,7 +56,7 @@ namespace Pyrewatcher
       _client.OnUnaccountedFor += OnUnaccountedFor;
 
       var channels = (await _broadcasters.FindWithNameAllConnectedAsync()).Select(x => x.Name).ToList();
-      Globals.Locale = await _databaseHelpers.LoadLocale(Globals.LocaleCode);
+      Globals.Locale = await _localization.GetLocalizationByCode(Globals.LocaleCode);
 
       var credentials = new ConnectionCredentials(_configuration.GetSection("Twitch")["Username"], _configuration.GetSection("Twitch")["IrcToken"],
                                                   capabilities: new Capabilities(false));

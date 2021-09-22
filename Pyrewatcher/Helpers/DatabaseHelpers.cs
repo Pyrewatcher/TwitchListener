@@ -9,18 +9,16 @@ namespace Pyrewatcher.Helpers
   public class DatabaseHelpers
   {
     private readonly BroadcasterRepository _broadcasters;
-    private readonly LocaleLineRepository _localeLines;
     private readonly LolChampionRepository _lolChampions;
     private readonly RuneReforgedRepository _runesReforged;
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly UserRepository _users;
 
-    public DatabaseHelpers(BroadcasterRepository broadcasters, UserRepository users, LocaleLineRepository localeLines,
-                           RuneReforgedRepository runesReforged, TwitchApiHelper twitchApiHelper, LolChampionRepository lolChampions)
+    public DatabaseHelpers(BroadcasterRepository broadcasters, UserRepository users, RuneReforgedRepository runesReforged,
+                           TwitchApiHelper twitchApiHelper, LolChampionRepository lolChampions)
     {
       _broadcasters = broadcasters;
       _users = users;
-      _localeLines = localeLines;
       _runesReforged = runesReforged;
       _twitchApiHelper = twitchApiHelper;
       _lolChampions = lolChampions;
@@ -53,15 +51,6 @@ namespace Pyrewatcher.Helpers
       await _broadcasters.InsertAsync(broadcaster);
 
       return broadcaster;
-    }
-
-    public async Task<Dictionary<string, string>> LoadLocale(string localeCode)
-    {
-      var lines =
-        (await _localeLines.FindRangeAsync("LocaleCode = @LocaleCode", new LocaleLine {LocaleCode = localeCode})).ToDictionary(
-          line => line.Name, line => line.Line);
-
-      return lines;
     }
 
     public async Task<Dictionary<long, string>> LoadRunes()

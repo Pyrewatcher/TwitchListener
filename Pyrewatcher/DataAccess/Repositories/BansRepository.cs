@@ -3,7 +3,7 @@ using Dapper;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess.Interfaces;
 
-namespace Pyrewatcher.DataAccess.Services
+namespace Pyrewatcher.DataAccess.Repositories
 {
   public class BansRepository : RepositoryBase, IBansRepository
   {

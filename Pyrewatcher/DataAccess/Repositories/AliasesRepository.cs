@@ -4,7 +4,7 @@ using Dapper;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess.Interfaces;
 
-namespace Pyrewatcher.DataAccess.Services
+namespace Pyrewatcher.DataAccess.Repositories
 {
   public class AliasesRepository : RepositoryBase, IAliasesRepository
   {
@@ -47,7 +47,7 @@ WHERE [NewName] = @command AND [BroadcasterId] = 0;";
   WHERE [Name] = @name AND ([BroadcasterId] = 0 OR [BroadcasterId] = @broadcasterId)
 ) THEN 1 ELSE 0 END;";
 
-      var connection = await CreateConnectionAsync();
+      using var connection = await CreateConnectionAsync();
 
       var result = await connection.QueryFirstAsync<bool>(query, new { name, broadcasterId });
 
@@ -59,7 +59,7 @@ WHERE [NewName] = @command AND [BroadcasterId] = 0;";
       const string query = @"INSERT INTO [Aliases] ([Name], [NewName], [BroadcasterId])
 VALUES (@name, @command, @broadcasterId);";
 
-      var connection = await CreateConnectionAsync();
+      using var connection = await CreateConnectionAsync();
 
       var rows = await connection.ExecuteAsync(query, new { name, command, broadcasterId });
 
@@ -74,7 +74,7 @@ VALUES (@name, @command, @broadcasterId);";
   WHERE [Name] = @name
 ) THEN 1 ELSE 0 END;";
 
-      var connection = await CreateConnectionAsync();
+      using var connection = await CreateConnectionAsync();
 
       var result = await connection.QueryFirstAsync<bool>(query, new { name });
 
@@ -86,7 +86,7 @@ VALUES (@name, @command, @broadcasterId);";
       const string query = @"INSERT INTO [Aliases] ([Name], [NewName], [BroadcasterId])
 VALUES (@name, @command, 0);";
 
-      var connection = await CreateConnectionAsync();
+      using var connection = await CreateConnectionAsync();
 
       var rows = await connection.ExecuteAsync(query, new { name, command });
 
@@ -99,7 +99,7 @@ VALUES (@name, @command, 0);";
 FROM [Aliases]
 WHERE [Name] = @name AND ([BroadcasterId] = 0 OR [BroadcasterId] = @broadcasterId);";
 
-      var connection = await CreateConnectionAsync();
+      using var connection = await CreateConnectionAsync();
 
       var result = await connection.QueryFirstOrDefaultAsync<long>(query, new { name, broadcasterId });
 
@@ -111,7 +111,7 @@ WHERE [Name] = @name AND ([BroadcasterId] = 0 OR [BroadcasterId] = @broadcasterI
       const string query = @"DELETE FROM [Aliases]
 WHERE [Id] = @aliasId;";
 
-      var connection = await CreateConnectionAsync();
+      using var connection = await CreateConnectionAsync();
 
       var rows = await connection.ExecuteAsync(query, new { aliasId });
 
@@ -124,7 +124,7 @@ WHERE [Id] = @aliasId;";
 FROM [Aliases]
 WHERE [Name] = @name AND ([BroadcasterId] = 0 OR [BroadcasterId] = @broadcasterId);";
 
-      var connection = await CreateConnectionAsync();
+      using var connection = await CreateConnectionAsync();
 
       var result = await connection.QueryFirstOrDefaultAsync<string>(query, new { name, broadcasterId });
 

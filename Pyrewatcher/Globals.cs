@@ -10,7 +10,7 @@ namespace Pyrewatcher
     public static Dictionary<string, List<string>> BroadcasterViewers = new();
 
     public static string LocaleCode = "PL";
-    public static Dictionary<string, string> Locale;
+    public static IDictionary<string, string> Locale;
     public static Dictionary<long, string> Runes;
     public static Dictionary<long, string> LolChampions;
 

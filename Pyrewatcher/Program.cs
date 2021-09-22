@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.DataAccess.Services;
+using Pyrewatcher.DataAccess.Repositories;
 using Pyrewatcher.Handlers;
 using Pyrewatcher.Helpers;
 using Pyrewatcher.Riot.Interfaces;
@@ -124,6 +124,7 @@ namespace Pyrewatcher
                                                    // omit classes being part of the refactor
                                                   .Where(x => x.Name != "AliasesRepository")
                                                   .Where(x => x.Name != "BansRepository")
+                                                  .Where(x => x.Name != "LocalizationRepository")
                                                   .Where(x => x.Name != "RiotAccountsRepository")
                                                   // refactor part end
                                                   .ToList();
@@ -136,6 +137,7 @@ namespace Pyrewatcher
                     // register classes being part of the refactor separately
                     services.AddTransient<IAliasesRepository, AliasesRepository>();
                     services.AddTransient<IBansRepository, BansRepository>();
+                    services.AddTransient<ILocalizationRepository, LocalizationRepository>();
                     services.AddTransient<IRiotAccountsRepository, RiotAccountsRepository>();
                     // refactor part end
 

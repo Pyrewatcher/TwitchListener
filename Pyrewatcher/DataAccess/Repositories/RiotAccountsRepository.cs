@@ -6,7 +6,7 @@ using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Riot.Utilities;
 
-namespace Pyrewatcher.DataAccess.Services
+namespace Pyrewatcher.DataAccess.Repositories
 {
   public class RiotAccountsRepository : RepositoryBase, IRiotAccountsRepository
   {

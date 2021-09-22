@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
-using Pyrewatcher.DatabaseModels;
-using Pyrewatcher.Helpers;
+using Pyrewatcher.DataAccess.Interfaces;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -12,16 +10,14 @@ namespace Pyrewatcher.Commands
   public class LocaleCommand : CommandBase<LocaleCommandArguments>
   {
     private readonly TwitchClient _client;
-    private readonly DatabaseHelpers _databaseHelpers;
-    private readonly LocaleRepository _locales;
+    private readonly ILocalizationRepository _localization;
     private readonly ILogger<LocaleCommand> _logger;
 
-    public LocaleCommand(TwitchClient client, ILogger<LocaleCommand> logger, LocaleRepository locales, DatabaseHelpers databaseHelpers)
+    public LocaleCommand(TwitchClient client, ILogger<LocaleCommand> logger, ILocalizationRepository localization)
     {
       _client = client;
       _logger = logger;
-      _locales = locales;
-      _databaseHelpers = databaseHelpers;
+      _localization = localization;
     }
 
     public override LocaleCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
@@ -40,7 +36,7 @@ namespace Pyrewatcher.Commands
 
     public override async Task<bool> ExecuteAsync(LocaleCommandArguments args, ChatMessage message)
     {
-      if (await _locales.FindAsync("Code = @Code", new Locale {Code = args.LocaleCode}) == null)
+      if (args.LocaleCode != "PL" && args.LocaleCode != "EN")
       {
         _logger.LogInformation("Invalid locale code: {code} - returning", args.LocaleCode);
 
@@ -48,7 +44,7 @@ namespace Pyrewatcher.Commands
       }
 
       Globals.LocaleCode = args.LocaleCode;
-      Globals.Locale = await _databaseHelpers.LoadLocale(Globals.LocaleCode);
+      Globals.Locale = await _localization.GetLocalizationByCode(args.LocaleCode);
       _client.SendMessage(message.Channel, string.Format(Globals.Locale["locale_changed"], message.DisplayName));
 
       return true;

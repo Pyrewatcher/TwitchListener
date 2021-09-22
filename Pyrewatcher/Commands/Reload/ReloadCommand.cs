@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
@@ -13,18 +14,18 @@ namespace Pyrewatcher.Commands
   public class ReloadCommand : CommandBase<ReloadCommandArguments>
   {
     private readonly BroadcasterRepository _broadcasters;
+    private readonly ILocalizationRepository _localization;
     private readonly TwitchClient _client;
     private readonly CommandHelpers _commandHelpers;
-    private readonly DatabaseHelpers _databaseHelpers;
     private readonly ILogger<ReloadCommand> _logger;
 
-    public ReloadCommand(TwitchClient client, ILogger<ReloadCommand> logger, CommandHelpers commandHelpers, DatabaseHelpers databaseHelpers,
+    public ReloadCommand(TwitchClient client, ILocalizationRepository localization, ILogger<ReloadCommand> logger, CommandHelpers commandHelpers,
                          BroadcasterRepository broadcasters)
     {
       _client = client;
+      _localization = localization;
       _logger = logger;
       _commandHelpers = commandHelpers;
-      _databaseHelpers = databaseHelpers;
       _broadcasters = broadcasters;
     }
 
@@ -49,7 +50,7 @@ namespace Pyrewatcher.Commands
       switch (args.Component)
       {
         case "locale":
-          Globals.Locale = await _databaseHelpers.LoadLocale(Globals.LocaleCode);
+          Globals.Locale = await _localization.GetLocalizationByCode(Globals.LocaleCode);
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["reload_locale"], message.DisplayName));
 
           return true;
