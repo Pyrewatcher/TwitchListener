@@ -10,16 +10,14 @@ namespace Pyrewatcher.Helpers
   {
     private readonly BroadcasterRepository _broadcasters;
     private readonly LolChampionRepository _lolChampions;
-    private readonly RuneReforgedRepository _runesReforged;
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly UserRepository _users;
 
-    public DatabaseHelpers(BroadcasterRepository broadcasters, UserRepository users, RuneReforgedRepository runesReforged,
-                           TwitchApiHelper twitchApiHelper, LolChampionRepository lolChampions)
+    public DatabaseHelpers(BroadcasterRepository broadcasters, UserRepository users, TwitchApiHelper twitchApiHelper,
+                           LolChampionRepository lolChampions)
     {
       _broadcasters = broadcasters;
       _users = users;
-      _runesReforged = runesReforged;
       _twitchApiHelper = twitchApiHelper;
       _lolChampions = lolChampions;
     }
@@ -51,13 +49,6 @@ namespace Pyrewatcher.Helpers
       await _broadcasters.InsertAsync(broadcaster);
 
       return broadcaster;
-    }
-
-    public async Task<Dictionary<long, string>> LoadRunes()
-    {
-      var runes = (await _runesReforged.FindAllAsync()).ToDictionary(rune => rune.Id, rune => rune.Name);
-
-      return runes;
     }
 
     public async Task<Dictionary<long, string>> LoadLolChampions()

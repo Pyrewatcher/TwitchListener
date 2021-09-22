@@ -11,7 +11,7 @@ namespace Pyrewatcher
 
     public static string LocaleCode = "PL";
     public static IDictionary<string, string> Locale;
-    public static Dictionary<long, string> Runes;
+    public static IDictionary<long, string> LolRunes;
     public static Dictionary<long, string> LolChampions;
 
     public static List<Type> CommandTypes;

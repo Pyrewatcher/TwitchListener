@@ -5,6 +5,6 @@ namespace Pyrewatcher.DataAccess.Interfaces
 {
   public interface ILocalizationRepository
   {
-    Task<IDictionary<string, string>> GetLocalizationByCode(string localeCode);
+    Task<IDictionary<string, string>> GetLocalizationByCodeAsync(string localeCode);
   }
 }

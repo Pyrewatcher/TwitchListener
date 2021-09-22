@@ -56,7 +56,7 @@ namespace Pyrewatcher
       _client.OnUnaccountedFor += OnUnaccountedFor;
 
       var channels = (await _broadcasters.FindWithNameAllConnectedAsync()).Select(x => x.Name).ToList();
-      Globals.Locale = await _localization.GetLocalizationByCode(Globals.LocaleCode);
+      Globals.Locale = await _localization.GetLocalizationByCodeAsync(Globals.LocaleCode);
 
       var credentials = new ConnectionCredentials(_configuration.GetSection("Twitch")["Username"], _configuration.GetSection("Twitch")["IrcToken"],
                                                   capabilities: new Capabilities(false));

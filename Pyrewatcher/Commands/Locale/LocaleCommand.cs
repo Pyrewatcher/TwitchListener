@@ -44,7 +44,7 @@ namespace Pyrewatcher.Commands
       }
 
       Globals.LocaleCode = args.LocaleCode;
-      Globals.Locale = await _localization.GetLocalizationByCode(args.LocaleCode);
+      Globals.Locale = await _localization.GetLocalizationByCodeAsync(args.LocaleCode);
       _client.SendMessage(message.Channel, string.Format(Globals.Locale["locale_changed"], message.DisplayName));
 
       return true;

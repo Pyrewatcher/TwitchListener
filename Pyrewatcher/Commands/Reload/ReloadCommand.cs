@@ -50,7 +50,7 @@ namespace Pyrewatcher.Commands
       switch (args.Component)
       {
         case "locale":
-          Globals.Locale = await _localization.GetLocalizationByCode(Globals.LocaleCode);
+          Globals.Locale = await _localization.GetLocalizationByCodeAsync(Globals.LocaleCode);
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["reload_locale"], message.DisplayName));
 
           return true;

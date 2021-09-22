@@ -14,11 +14,11 @@ namespace Pyrewatcher.DataAccess.Repositories
 
     }
 
-    public async Task<IDictionary<string, string>> GetLocalizationByCode(string localeCode)
+    public async Task<IDictionary<string, string>> GetLocalizationByCodeAsync(string localeCode)
     {
       const string query = @"SELECT [Name] AS [Key], [Line] AS [Value]
 FROM [LocaleLines]
-WHERE [LocaleCode] = @localeCode";
+WHERE [LocaleCode] = @localeCode;";
 
       using var connection = await CreateConnectionAsync();
 
