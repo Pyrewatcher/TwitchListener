@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using JetBrains.Annotations;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
@@ -10,28 +10,29 @@ using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Commands
 {
+  [UsedImplicitly]
   public class RunyCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly ILogger<RunyCommand> _logger;
-    private readonly ILolRunesRepository _lolRunes;
-    private readonly IRiotAccountsRepository _riotAccounts;
+
+    private readonly ILolRunesRepository _lolRunesRepository;
+    private readonly IRiotAccountsRepository _riotAccountsRepository;
+
     private readonly RiotLolApiHelper _riotLolApiHelper;
 
-    public RunyCommand(TwitchClient client, ILogger<RunyCommand> logger, IRiotAccountsRepository riotAccounts, ILolRunesRepository lolRunes,
+    public RunyCommand(TwitchClient client, ILolRunesRepository lolRunesRepository, IRiotAccountsRepository riotAccountsRepository,
                        RiotLolApiHelper riotLolApiHelper)
     {
       _client = client;
-      _logger = logger;
-      _riotAccounts = riotAccounts;
-      _lolRunes = lolRunes;
+      _lolRunesRepository = lolRunesRepository;
+      _riotAccountsRepository = riotAccountsRepository;
       _riotLolApiHelper = riotLolApiHelper;
     }
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccounts.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
       (var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accounts.ToList());
 
@@ -41,7 +42,7 @@ namespace Pyrewatcher.Commands
       }
       else
       {
-        Globals.LolRunes ??= await _lolRunes.GetAllAsync();
+        Globals.LolRunes ??= await _lolRunesRepository.GetAllAsync();
 
         var streamer = gameInfo.Participants.Find(x => x.SummonerId == activeAccount.SummonerId);
         var runesList = streamer.Perks.PerkIds.Select(x => Globals.LolRunes[x]).ToList();

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -12,9 +13,9 @@ namespace Pyrewatcher.Commands
     public int Repeats { get; set; }
   }
 
+  [UsedImplicitly]
   public class SpamCommand : ICommand
   {
-    public List<string> CommandArguments { get; } = new() {"repeats"};
     private readonly TwitchClient _client;
     private readonly ILogger<SpamCommand> _logger;
 
@@ -24,7 +25,7 @@ namespace Pyrewatcher.Commands
       _logger = logger;
     }
 
-    private SpamCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private SpamCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -54,7 +55,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
@@ -13,22 +14,25 @@ namespace Pyrewatcher.Commands
     public string Channel { get; set; }
   }
 
+  [UsedImplicitly]
   public class DisconnectCommand : ICommand
   {
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
     private readonly IConfiguration _config;
     private readonly ILogger<DisconnectCommand> _logger;
 
-    public DisconnectCommand(TwitchClient client, ILogger<DisconnectCommand> logger, IConfiguration config, BroadcasterRepository broadcasters)
+    private readonly BroadcasterRepository _broadcastersRepository;
+
+    public DisconnectCommand(TwitchClient client, IConfiguration config, ILogger<DisconnectCommand> logger,
+                             BroadcasterRepository broadcastersRepository)
     {
       _client = client;
-      _logger = logger;
       _config = config;
-      _broadcasters = broadcasters;
+      _logger = logger;
+      _broadcastersRepository = broadcastersRepository;
     }
 
-    private DisconnectCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private DisconnectCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       var args = new DisconnectCommandArguments();
 
@@ -42,7 +46,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
@@ -59,7 +63,7 @@ namespace Pyrewatcher.Commands
       }
 
       // get broadcaster
-      var broadcaster = await _broadcasters.FindWithNameByNameAsync(channel);
+      var broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(channel);
 
       // check if already disconnected
       if (broadcaster == null || !broadcaster.Connected)
@@ -72,7 +76,7 @@ namespace Pyrewatcher.Commands
       // disconnect from broadcaster
       _client.LeaveChannel(broadcaster.Name);
       broadcaster.Connected = false;
-      await _broadcasters.UpdateAsync(broadcaster);
+      await _broadcastersRepository.UpdateAsync(broadcaster);
 
       // send message
       if (broadcaster.Name != message.Channel)

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
@@ -14,20 +15,22 @@ namespace Pyrewatcher.Commands
     public int? NewValue { get; set; }
   }
 
+  [UsedImplicitly]
   public class CooldownCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly CommandRepository _commands;
     private readonly ILogger<CooldownCommand> _logger;
 
-    public CooldownCommand(TwitchClient client, ILogger<CooldownCommand> logger, CommandRepository commands)
+    private readonly CommandRepository _commandsRepository;
+
+    public CooldownCommand(TwitchClient client, ILogger<CooldownCommand> logger, CommandRepository commandsRepository)
     {
       _client = client;
       _logger = logger;
-      _commands = commands;
+      _commandsRepository = commandsRepository;
     }
 
-    private CooldownCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private CooldownCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -62,14 +65,14 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
         return false;
       }
 
-      var command = await _commands.FindAsync("Name = @Name", new Command {Name = args.Command.ToLower()});
+      var command = await _commandsRepository.FindAsync("Name = @Name", new Command {Name = args.Command.ToLower()});
 
       if (command == null)
       {
@@ -89,7 +92,7 @@ namespace Pyrewatcher.Commands
       {
         var oldValue = command.Cooldown;
         command.Cooldown = args.NewValue.Value;
-        await _commands.UpdateAsync(command);
+        await _commandsRepository.UpdateAsync(command);
         _client.SendMessage(message.Channel,
                             string.Format(Globals.Locale["cooldown_changed"], message.DisplayName, command.Name, oldValue, command.Cooldown));
       }

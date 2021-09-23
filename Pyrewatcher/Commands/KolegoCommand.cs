@@ -1,25 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Pyrewatcher.Helpers;
+using JetBrains.Annotations;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Commands
 {
+  [UsedImplicitly]
   public class KolegoCommand : ICommand
   {
-    public List<string> CommandArguments { get; } = new();
     private readonly TwitchClient _client;
-    private readonly ILogger<KolegoCommand> _logger;
-    private readonly TwitchApiHelper _twitchApiHelper;
 
-    public KolegoCommand(TwitchClient client, ILogger<KolegoCommand> logger, TwitchApiHelper twitchApiHelper)
+    public KolegoCommand(TwitchClient client)
     {
       _client = client;
-      _logger = logger;
-      _twitchApiHelper = twitchApiHelper;
     }
 
     public Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)

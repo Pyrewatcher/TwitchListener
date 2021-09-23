@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using JetBrains.Annotations;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
@@ -11,23 +11,23 @@ using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Commands
 {
+  [UsedImplicitly]
   public class RangaCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly ILogger<RangaCommand> _logger;
-    private readonly IRiotAccountsRepository _riotAccounts;
 
-    public RangaCommand(TwitchClient client, ILogger<RangaCommand> logger, IRiotAccountsRepository riotAccounts)
+    private readonly IRiotAccountsRepository _riotAccountsRepository;
+
+    public RangaCommand(TwitchClient client, IRiotAccountsRepository riotAccountsRepository)
     {
       _client = client;
-      _logger = logger;
-      _riotAccounts = riotAccounts;
+      _riotAccountsRepository = riotAccountsRepository;
     }
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccounts.GetActiveAccountsWithRankByBroadcasterIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.GetActiveAccountsWithRankByBroadcasterIdAsync(broadcasterId);
 
       if (accounts.Any())
       {

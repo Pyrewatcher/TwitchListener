@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
@@ -14,19 +15,22 @@ namespace Pyrewatcher.Commands
     public string Question { get; set; }
   }
 
+  [UsedImplicitly]
   public class _8ballCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly CommandRepository _commands;
-    private readonly CommandVariableRepository _commandVariables;
     private readonly ILogger<_8ballCommand> _logger;
 
-    public _8ballCommand(TwitchClient client, ILogger<_8ballCommand> logger, CommandRepository commands, CommandVariableRepository commandVariables)
+    private readonly CommandRepository _commandsRepository;
+    private readonly CommandVariableRepository _commandVariablesRepository;
+
+    public _8ballCommand(TwitchClient client, ILogger<_8ballCommand> logger, CommandRepository commandsRepository,
+                         CommandVariableRepository commandVariablesRepository)
     {
       _client = client;
       _logger = logger;
-      _commands = commands;
-      _commandVariables = commandVariables;
+      _commandsRepository = commandsRepository;
+      _commandVariablesRepository = commandVariablesRepository;
     }
 
     private _8ballCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
@@ -53,9 +57,9 @@ namespace Pyrewatcher.Commands
         return false;
       }
 
-      var command = await _commands.FindAsync("Name = @Name", new Command {Name = "8ball"});
+      var command = await _commandsRepository.FindAsync("Name = @Name", new Command {Name = "8ball"});
 
-      var numberOfResponsesVariable = await _commandVariables.FindAsync("CommandId = @CommandId AND Name = @Name",
+      var numberOfResponsesVariable = await _commandVariablesRepository.FindAsync("CommandId = @CommandId AND Name = @Name",
                                                                         new CommandVariable {CommandId = command.Id, Name = "numberOfResponses"});
       var responseNumber = Math.Abs(args.Question.GetHashCode()) % int.Parse(numberOfResponsesVariable.Value) + 1;
 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
@@ -13,20 +14,22 @@ namespace Pyrewatcher.Commands
     public string Command { get; set; }
   }
 
+  [UsedImplicitly]
   public class UsageCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly CommandRepository _commands;
     private readonly ILogger<UsageCommand> _logger;
 
-    public UsageCommand(TwitchClient client, ILogger<UsageCommand> logger, CommandRepository commands)
+    private readonly CommandRepository _commandsRepository;
+
+    public UsageCommand(TwitchClient client, ILogger<UsageCommand> logger, CommandRepository commandsRepository)
     {
       _client = client;
       _logger = logger;
-      _commands = commands;
+      _commandsRepository = commandsRepository;
     }
 
-    private UsageCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private UsageCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -42,14 +45,14 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
         return false;
       }
 
-      var command = await _commands.FindAsync("Name = @Name", new Command {Name = args.Command});
+      var command = await _commandsRepository.FindAsync("Name = @Name", new Command {Name = args.Command});
 
       if (command == null)
       {

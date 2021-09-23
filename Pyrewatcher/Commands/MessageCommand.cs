@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -13,6 +14,7 @@ namespace Pyrewatcher.Commands
     public string Message { get; set; }
   }
 
+  [UsedImplicitly]
   public class MessageCommand : ICommand
   {
     private readonly TwitchClient _client;
@@ -24,7 +26,7 @@ namespace Pyrewatcher.Commands
       _logger = logger;
     }
 
-    private MessageCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private MessageCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count < 2)
       {
@@ -52,7 +54,7 @@ namespace Pyrewatcher.Commands
 
     public Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {

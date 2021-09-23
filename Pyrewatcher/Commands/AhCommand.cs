@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -12,6 +13,7 @@ namespace Pyrewatcher.Commands
     public int Value { get; set; }
   }
 
+  [UsedImplicitly]
   public class AhCommand : ICommand
   {
     private readonly TwitchClient _client;

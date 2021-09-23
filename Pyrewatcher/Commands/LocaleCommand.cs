@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess.Interfaces;
 using TwitchLib.Client;
@@ -12,20 +13,22 @@ namespace Pyrewatcher.Commands
     public string LocaleCode { get; set; }
   }
 
+  [UsedImplicitly]
   public class LocaleCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly ILocalizationRepository _localization;
     private readonly ILogger<LocaleCommand> _logger;
 
-    public LocaleCommand(TwitchClient client, ILogger<LocaleCommand> logger, ILocalizationRepository localization)
+    private readonly ILocalizationRepository _localizationRepository;
+
+    public LocaleCommand(TwitchClient client, ILogger<LocaleCommand> logger, ILocalizationRepository localizationRepository)
     {
       _client = client;
       _logger = logger;
-      _localization = localization;
+      _localizationRepository = localizationRepository;
     }
 
-    private LocaleCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private LocaleCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -41,7 +44,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
@@ -56,7 +59,7 @@ namespace Pyrewatcher.Commands
       }
 
       Globals.LocaleCode = args.LocaleCode;
-      Globals.Locale = await _localization.GetLocalizationByCodeAsync(args.LocaleCode);
+      Globals.Locale = await _localizationRepository.GetLocalizationByCodeAsync(args.LocaleCode);
       _client.SendMessage(message.Channel, string.Format(Globals.Locale["locale_changed"], message.DisplayName));
 
       return true;

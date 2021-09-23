@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
@@ -15,22 +16,25 @@ namespace Pyrewatcher.Commands
     public string Broadcaster { get; set; }
   }
 
+  [UsedImplicitly]
   public class SubsCommand : ICommand
   {
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
     private readonly ILogger<SubsCommand> _logger;
-    private readonly SubscriptionRepository _subscriptions;
 
-    public SubsCommand(TwitchClient client, ILogger<SubsCommand> logger, SubscriptionRepository subscriptions, BroadcasterRepository broadcasters)
+    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly SubscriptionRepository _subscriptionsRepository;
+
+    public SubsCommand(TwitchClient client, ILogger<SubsCommand> logger, BroadcasterRepository broadcastersRepository,
+                       SubscriptionRepository subscriptionsRepository)
     {
       _client = client;
       _logger = logger;
-      _subscriptions = subscriptions;
-      _broadcasters = broadcasters;
+      _broadcastersRepository = broadcastersRepository;
+      _subscriptionsRepository = subscriptionsRepository;
     }
 
-    private SubsCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private SubsCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       var args = new SubsCommandArguments();
 
@@ -44,7 +48,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
@@ -55,11 +59,11 @@ namespace Pyrewatcher.Commands
 
       if (args.Broadcaster != null)
       {
-        broadcaster = await _broadcasters.FindWithNameByNameAsync(args.Broadcaster.ToLower());
+        broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster.ToLower());
       }
       else
       {
-        broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
+        broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
       }
 
       if (broadcaster == null)
@@ -72,7 +76,7 @@ namespace Pyrewatcher.Commands
 
       var endingTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-      var subscriptions = (await _subscriptions.FindRangeAsync("EndingTimestamp >= @EndingTimestamp AND BroadcasterId = @BroadcasterId",
+      var subscriptions = (await _subscriptionsRepository.FindRangeAsync("EndingTimestamp >= @EndingTimestamp AND BroadcasterId = @BroadcasterId",
                                                                new Subscription {EndingTimestamp = endingTimestamp, BroadcasterId = broadcaster.Id}))
        .ToList();
 

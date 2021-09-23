@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using JetBrains.Annotations;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
@@ -9,28 +9,29 @@ using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Commands
 {
+  [UsedImplicitly]
   public class BanyCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly ILogger<BanyCommand> _logger;
-    private readonly ILolChampionsRepository _lolChampions;
-    private readonly IRiotAccountsRepository _riotAccounts;
+
+    private readonly ILolChampionsRepository _lolChampionsRepository;
+    private readonly IRiotAccountsRepository _riotAccountsRepository;
+
     private readonly RiotLolApiHelper _riotLolApiHelper;
 
-    public BanyCommand(TwitchClient client, ILogger<BanyCommand> logger, ILolChampionsRepository lolChampions, IRiotAccountsRepository riotAccounts,
+    public BanyCommand(TwitchClient client, ILolChampionsRepository lolChampionsRepository, IRiotAccountsRepository riotAccountsRepository,
                        RiotLolApiHelper riotLolApiHelper)
     {
       _client = client;
-      _logger = logger;
-      _lolChampions = lolChampions;
-      _riotAccounts = riotAccounts;
+      _lolChampionsRepository = lolChampionsRepository;
+      _riotAccountsRepository = riotAccountsRepository;
       _riotLolApiHelper = riotLolApiHelper;
     }
-    
+
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccounts.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
       (var gameInfo, var activeAccount) = await _riotLolApiHelper.SpectatorGetOneByRiotAccountModelsList(accounts.ToList());
 
@@ -54,7 +55,7 @@ namespace Pyrewatcher.Commands
         
         var allyBans = new List<string>();
 
-        Globals.LolChampions ??= await _lolChampions.GetAllAsync();
+        Globals.LolChampions ??= await _lolChampionsRepository.GetAllAsync();
 
         foreach (var bannedChampion in allyBansIds)
         {

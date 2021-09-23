@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
@@ -16,25 +17,28 @@ namespace Pyrewatcher.Commands
     public string Component { get; set; }
   }
 
+  [UsedImplicitly]
   public class ReloadCommand : ICommand
   {
-    private readonly BroadcasterRepository _broadcasters;
-    private readonly ILocalizationRepository _localization;
     private readonly TwitchClient _client;
-    private readonly CommandHelpers _commandHelpers;
     private readonly ILogger<ReloadCommand> _logger;
 
-    public ReloadCommand(TwitchClient client, ILocalizationRepository localization, ILogger<ReloadCommand> logger, CommandHelpers commandHelpers,
-                         BroadcasterRepository broadcasters)
+    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly ILocalizationRepository _localizationRepository;
+
+    private readonly CommandHelpers _commandHelpers;
+
+    public ReloadCommand(TwitchClient client, ILogger<ReloadCommand> logger, BroadcasterRepository broadcastersRepository,
+                         ILocalizationRepository localizationRepository, CommandHelpers commandHelpers)
     {
       _client = client;
-      _localization = localization;
       _logger = logger;
+      _broadcastersRepository = broadcastersRepository;
+      _localizationRepository = localizationRepository;
       _commandHelpers = commandHelpers;
-      _broadcasters = broadcasters;
     }
 
-    private ReloadCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private ReloadCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -50,7 +54,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
@@ -62,19 +66,19 @@ namespace Pyrewatcher.Commands
       switch (args.Component)
       {
         case "locale":
-          Globals.Locale = await _localization.GetLocalizationByCodeAsync(Globals.LocaleCode);
+          Globals.Locale = await _localizationRepository.GetLocalizationByCodeAsync(Globals.LocaleCode);
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["reload_locale"], message.DisplayName));
 
           return true;
         case "ranks" or "ranga":
-          broadcasters = (await _broadcasters.FindWithNameAllConnectedAsync()).ToList();
+          broadcasters = (await _broadcastersRepository.FindWithNameAllConnectedAsync()).ToList();
           await _commandHelpers.UpdateLolRankDataForBroadcasters(broadcasters);
           await _commandHelpers.UpdateTftRankDataForBroadcasters(broadcasters);
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["reload_ranks"], message.DisplayName));
 
           return true;
         case "matches" or "lol" or "kda" or "tft":
-          broadcasters = (await _broadcasters.FindWithNameAllConnectedAsync()).ToList();
+          broadcasters = (await _broadcastersRepository.FindWithNameAllConnectedAsync()).ToList();
           await _commandHelpers.UpdateLolMatchDataForBroadcasters(broadcasters);
           await _commandHelpers.UpdateTftMatchDataForBroadcasters(broadcasters);
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["reload_matches"], message.DisplayName));

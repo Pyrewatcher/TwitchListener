@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using JetBrains.Annotations;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
@@ -12,21 +12,22 @@ using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Commands
 {
+  [UsedImplicitly]
   public class TftCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly ILogger<TftCommand> _logger;
-    private readonly IRiotAccountsRepository _riotAccounts;
-    private readonly TftMatchRepository _tftMatches;
+
+    private readonly IRiotAccountsRepository _riotAccountsRepository;
+    private readonly TftMatchRepository _tftMatchesRepository;
+
     private readonly Utilities _utilities;
 
-    public TftCommand(TwitchClient client, ILogger<TftCommand> logger, IRiotAccountsRepository riotAccounts, TftMatchRepository tftMatches,
+    public TftCommand(TwitchClient client, IRiotAccountsRepository riotAccountsRepository, TftMatchRepository tftMatchesRepository,
                       Utilities utilities)
     {
       _client = client;
-      _logger = logger;
-      _riotAccounts = riotAccounts;
-      _tftMatches = tftMatches;
+      _riotAccountsRepository = riotAccountsRepository;
+      _tftMatchesRepository = tftMatchesRepository;
       _utilities = utilities;
     }
 
@@ -35,13 +36,13 @@ namespace Pyrewatcher.Commands
       var beginTime = _utilities.GetBeginTime();
       
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccounts.GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
       var matches = new List<TftMatch>();
 
       foreach (var account in accounts)
       {
-        var matchesList = (await _tftMatches.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp",
+        var matchesList = (await _tftMatchesRepository.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp",
                                                             new TftMatch { AccountId = account.Id, Timestamp = beginTime })).ToList();
         matches.AddRange(matchesList);
       }

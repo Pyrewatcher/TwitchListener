@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
@@ -13,22 +14,25 @@ namespace Pyrewatcher.Commands
     public string User { get; set; }
   }
 
+  [UsedImplicitly]
   public class UnbanCommand : ICommand
   {
-    private readonly IBansRepository _bans;
     private readonly TwitchClient _client;
-    private readonly CommandHelpers _commandHelpers;
     private readonly ILogger<UnbanCommand> _logger;
 
-    public UnbanCommand(TwitchClient client, ILogger<UnbanCommand> logger, IBansRepository bans, CommandHelpers commandHelpers)
+    private readonly IBansRepository _bansRepository;
+
+    private readonly CommandHelpers _commandHelpers;
+
+    public UnbanCommand(TwitchClient client, ILogger<UnbanCommand> logger, IBansRepository bansRepository, CommandHelpers commandHelpers)
     {
       _client = client;
       _logger = logger;
-      _bans = bans;
+      _bansRepository = bansRepository;
       _commandHelpers = commandHelpers;
     }
 
-    private UnbanCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private UnbanCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -44,7 +48,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
@@ -67,14 +71,14 @@ namespace Pyrewatcher.Commands
         return false;
       }
       
-      if (!await _bans.IsUserBannedByIdAsync(user.Id))
+      if (!await _bansRepository.IsUserBannedByIdAsync(user.Id))
       {
         _logger.LogInformation("User {user} already isn't banned - returning", args.User);
 
         return false;
       }
 
-      var unbanned = await _bans.UnbanUserByIdAsync(user.Id);
+      var unbanned = await _bansRepository.UnbanUserByIdAsync(user.Id);
 
       if (unbanned)
       {

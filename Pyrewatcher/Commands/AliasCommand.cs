@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
@@ -18,25 +19,27 @@ namespace Pyrewatcher.Commands
     public string Alias { get; set; }
   }
 
+  [UsedImplicitly]
   public class AliasCommand : ICommand
   {
-    private readonly IAliasesRepository _aliases;
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
-    private readonly CommandRepository _commands;
     private readonly ILogger<AliasCommand> _logger;
 
-    public AliasCommand(TwitchClient client, ILogger<AliasCommand> logger, BroadcasterRepository broadcasters, IAliasesRepository aliases,
-                        CommandRepository commands)
+    private readonly IAliasesRepository _aliasesRepository;
+    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly CommandRepository _commandsRepository;
+
+    public AliasCommand(TwitchClient client, ILogger<AliasCommand> logger, IAliasesRepository aliasesRepository,
+                        BroadcasterRepository broadcastersRepository, CommandRepository commandsRepository)
     {
       _client = client;
       _logger = logger;
-      _broadcasters = broadcasters;
-      _aliases = aliases;
-      _commands = commands;
+      _aliasesRepository = aliasesRepository;
+      _broadcastersRepository = broadcastersRepository;
+      _commandsRepository = commandsRepository;
     }
 
-    private AliasCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private AliasCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -130,7 +133,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
@@ -148,7 +151,7 @@ namespace Pyrewatcher.Commands
           if (args.Broadcaster != null)
           {
             // get given broadcaster
-            broadcaster = await _broadcasters.FindWithNameByNameAsync(args.Broadcaster.ToLower());
+            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster.ToLower());
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
             if (broadcaster == null)
@@ -161,11 +164,11 @@ namespace Pyrewatcher.Commands
           else
           {
             // get current broadcaster
-            broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
+            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
           }
 
           // get aliases list
-          aliasesList = (await _aliases.GetAliasesForCommandByBroadcasterIdAsync(args.Command.TrimStart('\\'), broadcaster.Id)).ToList();
+          aliasesList = (await _aliasesRepository.GetAliasesForCommandByBroadcasterIdAsync(args.Command.TrimStart('\\'), broadcaster.Id)).ToList();
 
           // check if empty
           if (!aliasesList.Any())
@@ -192,7 +195,7 @@ namespace Pyrewatcher.Commands
           break;
         case "lookupglobal": // \account lookupglobal <Command>
           // get aliases list
-          aliasesList = (await _aliases.GetGlobalAliasesForCommandAsync(args.Command.TrimStart('\\'))).ToList();
+          aliasesList = (await _aliasesRepository.GetGlobalAliasesForCommandAsync(args.Command.TrimStart('\\'))).ToList();
 
           // check if empty
           if (!aliasesList.Any())
@@ -216,10 +219,10 @@ namespace Pyrewatcher.Commands
 
           break;
         case "create": // \alias create <Alias> <Command>
-          broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
+          broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
 
           // check if a channel or global alias already exists in the database
-          if (await _aliases.ExistsAnyAliasWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id))
+          if (await _aliasesRepository.ExistsAnyAliasWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id))
           {
             _logger.LogInformation(
               "Alias \"{alias}\" already exists for broadcaster \"{broadcaster}\" or there is a global alias with that name - returning", args.Alias,
@@ -231,7 +234,7 @@ namespace Pyrewatcher.Commands
           // if alias does not start with '!', check commands as well
           if (!args.Alias.StartsWith('!'))
           {
-            if (await _commands.FindAsync("Name = @Name AND (Channel = '' OR Channel = @Channel)",
+            if (await _commandsRepository.FindAsync("Name = @Name AND (Channel = '' OR Channel = @Channel)",
                                           new Command {Name = args.Alias, Channel = broadcaster.Name}) != null)
             {
               _logger.LogInformation("A command with name \"{name}\" already exists and is available for broadcaster \"{broadcaster}\" - returning",
@@ -242,7 +245,7 @@ namespace Pyrewatcher.Commands
           }
 
           // create the alias and add it to database
-          created = await _aliases.CreateChannelAliasAsync(broadcaster.Id, args.Alias, args.Command);
+          created = await _aliasesRepository.CreateChannelAliasAsync(broadcaster.Id, args.Alias, args.Command);
 
           // send the message
           if (created)
@@ -258,7 +261,7 @@ namespace Pyrewatcher.Commands
           break;
         case "createglobal": // \alias createglobal <Alias> <Command>
           // check if alias with given alias name already exists in the database
-          if (await _aliases.ExistsAnyAliasWithNameAsync(args.Alias))
+          if (await _aliasesRepository.ExistsAnyAliasWithNameAsync(args.Alias))
           {
             _logger.LogInformation("Alias \"{alias}\" already exists in the database - returning", args.Alias);
 
@@ -268,7 +271,7 @@ namespace Pyrewatcher.Commands
           // if alias does not start with '!', check commands as well
           if (!args.Alias.StartsWith('!'))
           {
-            if (await _commands.FindAsync("Name = @Name", new Command {Name = args.Alias}) != null)
+            if (await _commandsRepository.FindAsync("Name = @Name", new Command {Name = args.Alias}) != null)
             {
               _logger.LogInformation("A command with name \"{name}\" already exists in the database - returning", args.Alias);
 
@@ -277,7 +280,7 @@ namespace Pyrewatcher.Commands
           }
 
           // create the alias and add it to database
-          created = await _aliases.CreateGlobalAliasAsync(args.Alias, args.Command);
+          created = await _aliasesRepository.CreateGlobalAliasAsync(args.Alias, args.Command);
 
           // send the message
           if (created)
@@ -291,10 +294,10 @@ namespace Pyrewatcher.Commands
 
           break;
         case "delete": // \alias delete <Alias>
-          broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
+          broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
 
           // get alias id
-          var aliasId = await _aliases.GetAliasIdWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id);
+          var aliasId = await _aliasesRepository.GetAliasIdWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id);
 
           if (aliasId is null)
           {
@@ -306,7 +309,7 @@ namespace Pyrewatcher.Commands
           }
 
           // delete the alias
-          var deleted = await _aliases.DeleteByIdAsync(aliasId.Value);
+          var deleted = await _aliasesRepository.DeleteByIdAsync(aliasId.Value);
 
           // send the message
           if (deleted)

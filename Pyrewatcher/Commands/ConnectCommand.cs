@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
@@ -14,27 +15,30 @@ namespace Pyrewatcher.Commands
     public string Channel { get; set; }
   }
 
+  [UsedImplicitly]
   public class ConnectCommand : ICommand
   {
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
-    private readonly CommandHelpers _commandHelpers;
-    private readonly IConfiguration _configuration;
-    private readonly DatabaseHelpers _databaseHelpers;
+    private readonly IConfiguration _config;
     private readonly ILogger<ConnectCommand> _logger;
 
-    public ConnectCommand(TwitchClient client, ILogger<ConnectCommand> logger, CommandHelpers commandHelpers, BroadcasterRepository broadcasters,
-                          DatabaseHelpers databaseHelpers, IConfiguration configuration)
+    private readonly BroadcasterRepository _broadcastersRepository;
+
+    private readonly CommandHelpers _commandHelpers;
+    private readonly DatabaseHelpers _databaseHelpers;
+
+    public ConnectCommand(TwitchClient client, IConfiguration config, ILogger<ConnectCommand> logger, BroadcasterRepository broadcastersRepository,
+                          CommandHelpers commandHelpers, DatabaseHelpers databaseHelpers)
     {
       _client = client;
+      _config = config;
       _logger = logger;
+      _broadcastersRepository = broadcastersRepository;
       _commandHelpers = commandHelpers;
-      _broadcasters = broadcasters;
       _databaseHelpers = databaseHelpers;
-      _configuration = configuration;
     }
 
-    private ConnectCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
+    private ConnectCommandArguments ParseAndValidateArguments(List<string> argsList)
     {
       if (argsList.Count == 0)
       {
@@ -50,7 +54,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList, message);
+      var args = ParseAndValidateArguments(argsList);
 
       if (args is null)
       {
@@ -79,10 +83,10 @@ namespace Pyrewatcher.Commands
       // connect to broadcaster
       _client.JoinChannel(broadcaster.Name);
       broadcaster.Connected = true;
-      await _broadcasters.UpdateAsync(broadcaster);
+      await _broadcastersRepository.UpdateAsync(broadcaster);
 
       // perform tasks
-      if (broadcaster.Name != _configuration.GetSection("Twitch")["Username"].ToLower())
+      if (broadcaster.Name != _config.GetSection("Twitch")["Username"].ToLower())
       {
         new Task(async () =>
         {

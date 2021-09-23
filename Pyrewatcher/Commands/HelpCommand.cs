@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using JetBrains.Annotations;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
@@ -10,22 +10,22 @@ using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Commands
 {
+  [UsedImplicitly]
   public class HelpCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly CommandRepository _commands;
-    private readonly ILogger<HelpCommand> _logger;
 
-    public HelpCommand(TwitchClient client, ILogger<HelpCommand> logger, CommandRepository commands)
+    private readonly CommandRepository _commandsRepository;
+
+    public HelpCommand(TwitchClient client, CommandRepository commandsRepository)
     {
       _client = client;
-      _logger = logger;
-      _commands = commands;
+      _commandsRepository = commandsRepository;
     }
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var commands = (await _commands.FindRangeAsync("(Channel = '' OR Channel = @Channel) AND IsPublic = 1 AND Name != 'help'",
+      var commands = (await _commandsRepository.FindRangeAsync("(Channel = '' OR Channel = @Channel) AND IsPublic = 1 AND Name != 'help'",
                                                      new Command {Channel = message.Channel})).Select(x => x.Name)
                                                                                               .OrderBy(x => x)
                                                                                               .ToList();

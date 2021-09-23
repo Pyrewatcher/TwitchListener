@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using JetBrains.Annotations;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
@@ -11,21 +11,22 @@ using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Commands
 {
+  [UsedImplicitly]
   public class PinkiCommand : ICommand
   {
     private readonly TwitchClient _client;
-    private readonly ILogger<PinkiCommand> _logger;
-    private readonly LolMatchRepository _lolMatches;
-    private readonly IRiotAccountsRepository _riotAccounts;
+
+    private readonly LolMatchRepository _lolMatchesRepository;
+    private readonly IRiotAccountsRepository _riotAccountsRepository;
+
     private readonly Utilities _utilities;
 
-    public PinkiCommand(TwitchClient client, ILogger<PinkiCommand> logger, IRiotAccountsRepository riotAccounts, LolMatchRepository lolMatches,
+    public PinkiCommand(TwitchClient client, LolMatchRepository lolMatchesRepository, IRiotAccountsRepository riotAccountsRepository,
                         Utilities utilities)
     {
       _client = client;
-      _logger = logger;
-      _riotAccounts = riotAccounts;
-      _lolMatches = lolMatches;
+      _lolMatchesRepository = lolMatchesRepository;
+      _riotAccountsRepository = riotAccountsRepository;
       _utilities = utilities;
     }
 
@@ -34,13 +35,13 @@ namespace Pyrewatcher.Commands
       var beginTime = _utilities.GetBeginTime();
 
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccounts.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
       var matches = new List<LolMatch>();
 
       foreach (var account in accounts)
       {
-        var matchesList = (await _lolMatches.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp AND GameDuration >= @GameDuration",
+        var matchesList = (await _lolMatchesRepository.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp AND GameDuration >= @GameDuration",
                                                             new LolMatch { AccountId = account.Id, Timestamp = beginTime, GameDuration = 330 })).ToList();
         matches.AddRange(matchesList);
       }

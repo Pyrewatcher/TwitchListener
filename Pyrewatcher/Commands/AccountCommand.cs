@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
@@ -27,23 +28,27 @@ namespace Pyrewatcher.Commands
     public string NewDisplayName { get; set; }
   }
 
+  [UsedImplicitly]
   public class AccountCommand : ICommand
   {
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
     private readonly ILogger<AccountCommand> _logger;
-    private readonly IRiotAccountsRepository _riotAccounts;
+
+    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IRiotAccountsRepository _riotAccountsRepository;
+
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly Utilities _utilities;
     private readonly ISummonerV4Client _summonerV4;
 
-    public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, BroadcasterRepository broadcasters,
-                          IRiotAccountsRepository riotAccounts, RiotTftApiHelper riotTftApiHelper, Utilities utilities, ISummonerV4Client summonerV4)
+    public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, BroadcasterRepository broadcastersRepository,
+                          IRiotAccountsRepository riotAccountsRepository, RiotTftApiHelper riotTftApiHelper, Utilities utilities,
+                          ISummonerV4Client summonerV4)
     {
       _client = client;
       _logger = logger;
-      _broadcasters = broadcasters;
-      _riotAccounts = riotAccounts;
+      _broadcastersRepository = broadcastersRepository;
+      _riotAccountsRepository = riotAccountsRepository;
       _riotTftApiHelper = riotTftApiHelper;
       _utilities = utilities;
       _summonerV4 = summonerV4;
@@ -194,7 +199,7 @@ namespace Pyrewatcher.Commands
           if (args.Broadcaster is not null)
           {
             // get given broadcaster
-            broadcaster = await _broadcasters.FindWithNameByNameAsync(args.Broadcaster.ToLower());
+            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster.ToLower());
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
             if (broadcaster is null)
@@ -209,11 +214,11 @@ namespace Pyrewatcher.Commands
           else
           {
             // get current broadcaster
-            broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
+            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
           }
 
           // get accounts list
-          accountsList = (await _riotAccounts.GetAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
+          accountsList = (await _riotAccountsRepository.GetAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
           // check if empty
           if (accountsList.Count == 0)
@@ -237,7 +242,7 @@ namespace Pyrewatcher.Commands
           if (args.Broadcaster is not null)
           {
             // get given broadcaster
-            broadcaster = await _broadcasters.FindWithNameByNameAsync(args.Broadcaster);
+            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster);
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
             if (broadcaster is null)
@@ -252,11 +257,11 @@ namespace Pyrewatcher.Commands
           else
           {
             // get current broadcaster
-            broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
+            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
           }
 
           // get accounts list
-          accountsList = (await _riotAccounts.GetActiveAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
+          accountsList = (await _riotAccountsRepository.GetActiveAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
 
           // check if empty
           if (accountsList.Count == 0)
@@ -298,8 +303,8 @@ namespace Pyrewatcher.Commands
           }
 
           // check if account already exists in channel's Riot account list
-          broadcaster = await _broadcasters.FindWithNameByNameAsync(message.Channel);
-          account = await _riotAccounts.GetAccountForDisplayByDetailsAsync(args.Game, args.Server, args.SummonerName, broadcaster.Id);
+          broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+          account = await _riotAccountsRepository.GetAccountForDisplayByDetailsAsync(args.Game, args.Server, args.SummonerName, broadcaster.Id);
 
           if (account is not null)
           {
@@ -328,7 +333,7 @@ namespace Pyrewatcher.Commands
 
           account = new RiotAccount(broadcaster.Id, args.Game, data.Name, args.Server, data.SummonerId, data.AccountId, data.Puuid);
 
-          await _riotAccounts.InsertAccount(account);
+          await _riotAccountsRepository.InsertAccount(account);
           
           _client.SendMessage(message.Channel,
                               string.Format(Globals.Locale["account_add_accountAdded"], message.DisplayName, account.ToStringList()));
@@ -338,7 +343,7 @@ namespace Pyrewatcher.Commands
         case "remove": // \account remove <AccountId>
         {
           // check if account with given id exists
-          account = await _riotAccounts.GetAccountForDisplayByIdAsync(args.AccountId);
+          account = await _riotAccountsRepository.GetAccountForDisplayByIdAsync(args.AccountId);
 
           if (account is null)
           {
@@ -349,7 +354,7 @@ namespace Pyrewatcher.Commands
           }
 
           // delete the account
-          var deleted = await _riotAccounts.DeleteByIdAsync(args.AccountId);
+          var deleted = await _riotAccountsRepository.DeleteByIdAsync(args.AccountId);
 
           if (deleted)
           {
@@ -366,7 +371,7 @@ namespace Pyrewatcher.Commands
         case "toggleactive": // \account toggleactive <AccountId>
         {
           // check if account with given id exists
-          account = await _riotAccounts.GetAccountForDisplayByIdAsync(args.AccountId);
+          account = await _riotAccountsRepository.GetAccountForDisplayByIdAsync(args.AccountId);
 
           if (account is null)
           {
@@ -376,7 +381,7 @@ namespace Pyrewatcher.Commands
             return false;
           }
           
-          var toggled = await _riotAccounts.ToggleActiveByIdAsync(args.AccountId);
+          var toggled = await _riotAccountsRepository.ToggleActiveByIdAsync(args.AccountId);
 
           if (toggled)
           {
@@ -394,7 +399,7 @@ namespace Pyrewatcher.Commands
         case "display": // \account display <AccountId> <NewDisplayName>
         {
           // check if account with given id exists
-          account = await _riotAccounts.GetAccountForDisplayByIdAsync(args.AccountId);
+          account = await _riotAccountsRepository.GetAccountForDisplayByIdAsync(args.AccountId);
 
           if (account is null)
           {
@@ -405,7 +410,7 @@ namespace Pyrewatcher.Commands
           }
 
           var newDisplayName = args.NewDisplayName == "-" ? "" : args.NewDisplayName;
-          var updated = await _riotAccounts.UpdateDisplayNameByIdAsync(args.AccountId, newDisplayName);
+          var updated = await _riotAccountsRepository.UpdateDisplayNameByIdAsync(args.AccountId, newDisplayName);
 
           if (updated)
           {
@@ -431,7 +436,7 @@ namespace Pyrewatcher.Commands
         case "update": // \account update <AccountId>
         {
           // check if account with given id exists
-          account = await _riotAccounts.GetAccountForApiCallsByIdAsync(args.AccountId);
+          account = await _riotAccountsRepository.GetAccountForApiCallsByIdAsync(args.AccountId);
 
           if (account is null)
           {
@@ -458,7 +463,7 @@ namespace Pyrewatcher.Commands
 
           if (data.Name != account.SummonerName)
           {
-            var updated = await _riotAccounts.UpdateSummonerNameByIdAsync(args.AccountId, data.Name);
+            var updated = await _riotAccountsRepository.UpdateSummonerNameByIdAsync(args.AccountId, data.Name);
 
             if (updated)
             {
