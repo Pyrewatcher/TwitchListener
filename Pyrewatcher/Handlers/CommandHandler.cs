@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Pyrewatcher.Commands;
 using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
@@ -15,7 +17,7 @@ namespace Pyrewatcher.Handlers
   public class CommandHandler
   {
     private readonly IAliasesRepository _aliases;
-    private readonly Dictionary<string, dynamic> _commandClasses = new();
+    private readonly IDictionary<string, ICommand> _commandClasses;
     private readonly CommandHelpers _commandHelpers;
     private readonly CommandRepository _commands;
     private readonly IHost _host;
@@ -37,11 +39,8 @@ namespace Pyrewatcher.Handlers
       _users = users;
       _latestCommandExecutions = latestCommandExecutions;
 
-      foreach (var commandType in Globals.CommandTypes)
-      {
-        var commandName = commandType.Name.Remove(commandType.Name.Length - 7).TrimStart('_').ToLower();
-        _commandClasses.Add(commandName, _host.Services.GetService(commandType));
-      }
+      _commandClasses = Globals.CommandTypes.ToDictionary(x => x.Name.Remove(x.Name.Length - 7).TrimStart('_').ToLower(),
+                                                          x => (ICommand) _host.Services.GetService(x));
     }
 
     public async Task HandleCommand(ChatCommand command)
@@ -148,8 +147,7 @@ namespace Pyrewatcher.Handlers
       }
       else
       {
-        var commandClass = _commandClasses[commandData.Name];
-        executionResult = await commandClass.HandleAsync(command.ArgumentsAsList, chatMessage);
+        executionResult = await _commandClasses[commandData.Name].ExecuteAsync(command.ArgumentsAsList, chatMessage);
       }
 
       // Check execution result and update command usage if executed successfully
