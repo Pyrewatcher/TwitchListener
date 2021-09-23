@@ -41,8 +41,6 @@
 	<s:Boolean
     x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=commands_005Cmessage/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean
-    x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=commands_005Cpasta/@EntryIndexedValue">True</s:Boolean>
-	<s:Boolean
     x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=commands_005Cpinki/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean
     x:Key="/Default/CodeInspection/NamespaceProvider/NamespaceFoldersToSkip/=commands_005Cranga/@EntryIndexedValue">True</s:Boolean>
