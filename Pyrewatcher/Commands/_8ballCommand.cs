@@ -28,7 +28,7 @@ namespace Pyrewatcher.Commands
 
     private _8ballCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
     {
-      if (argsList.Any())
+      if (!argsList.Any())
       {
         _client.SendMessage(message.Channel, string.Format(Globals.Locale["8ball_usage"], message.DisplayName));
         _logger.LogInformation("Question not provided - returning");
