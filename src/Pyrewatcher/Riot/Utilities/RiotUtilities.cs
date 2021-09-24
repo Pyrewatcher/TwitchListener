@@ -4,20 +4,30 @@ namespace Pyrewatcher.Riot.Utilities
 {
   public static class RiotUtilities
   {
-    public static long GetStartTime()
+    private static DateTimeOffset GetStartTimeOffset()
     {
       if (DateTime.UtcNow - DateTime.Today < TimeSpan.FromHours(4))
       {
         var yesterday = DateTime.Today.Subtract(TimeSpan.FromDays(1));
 
-        return new DateTimeOffset(yesterday.Year, yesterday.Month, yesterday.Day, 4, 00, 00, TimeSpan.Zero).ToUnixTimeSeconds();
+        return new DateTimeOffset(yesterday.Year, yesterday.Month, yesterday.Day, 4, 00, 00, TimeSpan.Zero);
       }
       else
       {
         var today = DateTime.Today;
 
-        return new DateTimeOffset(today.Year, today.Month, today.Day, 4, 00, 00, TimeSpan.Zero).ToUnixTimeSeconds();
+        return new DateTimeOffset(today.Year, today.Month, today.Day, 4, 00, 00, TimeSpan.Zero);
       }
+    }
+
+    public static long GetStartTimeInSeconds()
+    {
+      return GetStartTimeOffset().ToUnixTimeSeconds();
+    }
+
+    public static long GetStartTimeInMilliseconds()
+    {
+      return GetStartTimeOffset().ToUnixTimeMilliseconds();
     }
 
     public static string NormalizeSummonerName(string summonerName)

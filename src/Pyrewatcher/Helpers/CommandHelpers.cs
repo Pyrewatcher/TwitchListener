@@ -18,7 +18,7 @@ namespace Pyrewatcher.Helpers
     private readonly IConfiguration _config;
 
     private readonly IBansRepository _bansRepository;
-    private readonly LolMatchRepository _lolMatchesRepository;
+    private readonly ILolMatchesRepository _lolMatchesRepository;
     private readonly IRiotAccountsRepository _riotAccountsRepository;
     private readonly TftMatchRepository _tftMatchesRepository;
     private readonly UserRepository _usersRepository;
@@ -27,7 +27,7 @@ namespace Pyrewatcher.Helpers
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly IRiotClient _riotClient;
 
-    public CommandHelpers(IConfiguration config, IBansRepository bansRepository, LolMatchRepository lolMatchesRepository,
+    public CommandHelpers(IConfiguration config, IBansRepository bansRepository, ILolMatchesRepository lolMatchesRepository,
                           IRiotAccountsRepository riotAccountsRepository, TftMatchRepository tftMatchesRepository, UserRepository usersRepository,
                           RiotTftApiHelper riotTftApiHelper, TwitchApiHelper twitchApiHelper, IRiotClient riotClient)
     {
@@ -117,22 +117,15 @@ namespace Pyrewatcher.Helpers
 
       foreach (var account in accounts)
       {
-        var matches = await _riotClient.MatchV5.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, RiotUtilities.GetStartTime()); // TODO: Set routing value depending on server
+        var matches = await _riotClient.MatchV5.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, RiotUtilities.GetStartTimeInSeconds()); // TODO: Set routing value depending on server
 
         if (matches is null)
         {
           continue;
         }
 
-        foreach (var matchId in matches)
-        {
-          var matchNumber = long.Parse(matchId.Split('_')[1]);
-
-          if (await _lolMatchesRepository.FindAsync("[MatchId] = @MatchId", new LolMatch { MatchId = matchNumber }) is null && matchesToRequest.All(x => x.Item2 != matchId))
-          {
-            matchesToRequest.Add((account, matchId));
-          }
-        }
+        var matchesNotInDatabase = await _lolMatchesRepository.GetMatchesNotInDatabase(matches.ToList(), account.Id);
+        matchesToRequest.AddRange(matchesNotInDatabase.Select(x => (account, x)));
       }
 
       foreach ((var account, var matchId) in matchesToRequest)
@@ -146,20 +139,12 @@ namespace Pyrewatcher.Helpers
         
         var participant = match.Info.Players.First(x => x.Puuid == account.Puuid);
 
-        var databaseMatch = new LolMatch
-        {
-          AccountId = account.Id,
-          MatchId = match.Info.Id,
-          ServerApiCode = matchId.Split('_')[0],
-          Timestamp = match.Info.Timestamp,
-          ChampionId = participant.ChampionId,
-          Result = participant.WonMatch ? "W" : "L",
-          Kda = $"{participant.Kills}/{participant.Deaths}/{participant.Assists}",
-          GameDuration = match.Info.Duration / 1000,
-          ControlWardsBought = participant.VisionWardsBought
-        };
+        var inserted = await _lolMatchesRepository.InsertFromDto(account.Id, matchId, match, participant);
 
-        await _lolMatchesRepository.InsertAsync(databaseMatch);
+        if (!inserted)
+        {
+          // TODO: Log failure
+        }
       }
     }
 

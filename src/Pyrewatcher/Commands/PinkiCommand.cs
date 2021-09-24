@@ -2,10 +2,8 @@
 using System.Linq;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
-using Pyrewatcher.Helpers;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -16,24 +14,18 @@ namespace Pyrewatcher.Commands
   {
     private readonly TwitchClient _client;
 
-    private readonly LolMatchRepository _lolMatchesRepository;
+    private readonly ILolMatchesRepository _lolMatchesRepository;
     private readonly IRiotAccountsRepository _riotAccountsRepository;
 
-    private readonly Utilities _utilities;
-
-    public PinkiCommand(TwitchClient client, LolMatchRepository lolMatchesRepository, IRiotAccountsRepository riotAccountsRepository,
-                        Utilities utilities)
+    public PinkiCommand(TwitchClient client, ILolMatchesRepository lolMatchesRepository, IRiotAccountsRepository riotAccountsRepository)
     {
       _client = client;
       _lolMatchesRepository = lolMatchesRepository;
       _riotAccountsRepository = riotAccountsRepository;
-      _utilities = utilities;
     }
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var beginTime = _utilities.GetBeginTime();
-
       var broadcasterId = long.Parse(message.RoomId);
       var accounts = await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
@@ -41,9 +33,8 @@ namespace Pyrewatcher.Commands
 
       foreach (var account in accounts)
       {
-        var matchesList = (await _lolMatchesRepository.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp AND GameDuration >= @GameDuration",
-                                                            new LolMatch { AccountId = account.Id, Timestamp = beginTime, GameDuration = 330 })).ToList();
-        matches.AddRange(matchesList);
+        var accountMatches = await _lolMatchesRepository.GetTodaysMatchesByAccountId(account.Id);
+        matches.AddRange(accountMatches);
       }
 
       if (matches.Any())
