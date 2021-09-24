@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
 
@@ -9,21 +8,20 @@ namespace Pyrewatcher.Handlers
   public class TemplateCommandHandler
   {
     private readonly TwitchClient _client;
-    private readonly CommandVariableRepository _commandVariables;
-    private readonly ILogger<TemplateCommandHandler> _logger;
 
-    public TemplateCommandHandler(TwitchClient client, ILogger<TemplateCommandHandler> logger, CommandVariableRepository commandVariables)
+    private readonly ICommandVariablesRepository _commandVariablesRepository;
+
+    public TemplateCommandHandler(TwitchClient client, ICommandVariablesRepository commandVariablesRepository)
     {
       _client = client;
-      _logger = logger;
-      _commandVariables = commandVariables;
+      _commandVariablesRepository = commandVariablesRepository;
     }
 
     public async Task<bool> HandleTextAsync(string broadcasterName, Command textCommand)
     {
-      var textVariable = await _commandVariables.FindAsync("CommandId = @CommandId AND Name = @Name",
-                                                           new CommandVariable {CommandId = textCommand.Id, Name = "text"});
-      _client.SendMessage(broadcasterName, textVariable.Value);
+      var text = await _commandVariablesRepository.GetCommandTextById(textCommand.Id);
+
+      _client.SendMessage(broadcasterName, text);
 
       return true;
     }
