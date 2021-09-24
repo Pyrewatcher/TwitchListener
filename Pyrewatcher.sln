@@ -3,9 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pyrewatcher.Tests", "Pyrewatcher.Tests\Pyrewatcher.Tests.csproj", "{7D7E1676-0E66-4F9E-97C6-39A65A6E280C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B776DB31-EEFD-4E8C-9FC3-CCFA8D349309}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pyrewatcher", "Pyrewatcher\Pyrewatcher.csproj", "{BE933752-1C49-4BCD-96A3-C112B9B42E3F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pyrewatcher", "src\Pyrewatcher\Pyrewatcher.csproj", "{BE933752-1C49-4BCD-96A3-C112B9B42E3F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0203B53B-9464-446E-AAE7-8F00604E9043}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pyrewatcher.Tests", "tests\Pyrewatcher.Tests\Pyrewatcher.Tests.csproj", "{7D7E1676-0E66-4F9E-97C6-39A65A6E280C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,6 +28,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7D7E1676-0E66-4F9E-97C6-39A65A6E280C} = {0203B53B-9464-446E-AAE7-8F00604E9043}
+		{BE933752-1C49-4BCD-96A3-C112B9B42E3F} = {B776DB31-EEFD-4E8C-9FC3-CCFA8D349309}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FAC43794-DFA0-4579-A5C6-7200A9CFC09D}
