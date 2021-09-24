@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
 
@@ -10,20 +11,21 @@ namespace Pyrewatcher.Actions
 {
   public class ResubAction : IAction
   {
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
     private readonly ILogger<ResubAction> _logger;
-    private readonly SubscriptionRepository _subscriptions;
-    private readonly UserRepository _users;
 
-    public ResubAction(TwitchClient client, ILogger<ResubAction> logger, UserRepository users, SubscriptionRepository subscriptions,
-                       BroadcasterRepository broadcasters)
+    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly ISubscriptionsRepository _subscriptionsRepository;
+    private readonly UserRepository _usersRepository;
+
+    public ResubAction(TwitchClient client, ILogger<ResubAction> logger, BroadcasterRepository broadcastersRepository,
+                       ISubscriptionsRepository subscriptionsRepository, UserRepository usersRepository)
     {
       _client = client;
       _logger = logger;
-      _users = users;
-      _subscriptions = subscriptions;
-      _broadcasters = broadcasters;
+      _broadcastersRepository = broadcastersRepository;
+      _subscriptionsRepository = subscriptionsRepository;
+      _usersRepository = usersRepository;
     }
 
     public string MsgId
@@ -36,49 +38,45 @@ namespace Pyrewatcher.Actions
       var userId = long.Parse(args["user-id"]);
       var userName = args["display-name"];
 
-      var broadcaster = await _broadcasters.FindWithNameByNameAsync(args["broadcaster"]);
+      var broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args["broadcaster"]);
 
       if (broadcaster.SubGreetingsEnabled)
       {
         _client.SendMessage(broadcaster.Name, $"@{userName} {broadcaster.SubGreetingEmote}");
       }
 
-      var user = await _users.FindAsync("Id = @Id", new User {Id = userId});
+      var user = await _usersRepository.FindAsync("Id = @Id", new User {Id = userId});
 
       if (user == null)
       {
         user = new User {Name = userName.ToLower(), DisplayName = userName, Id = userId};
-        await _users.InsertAsync(user);
+        await _usersRepository.InsertAsync(user);
         _logger.LogInformation("User {user} inserted to the database", userName);
       }
       else
       {
         user.DisplayName = userName;
         user.Name = userName.ToLower();
-        await _users.UpdateAsync(user);
+        await _usersRepository.UpdateAsync(user);
       }
 
-      var subscription = await _subscriptions.FindAsync("BroadcasterId = @BroadcasterId AND UserId = @UserId",
-                                                        new Subscription {BroadcasterId = broadcaster.Id, UserId = userId});
-
-      if (subscription == null)
+      if (await _subscriptionsRepository.ExistsByUserId(broadcaster.Id, userId))
       {
-        subscription = new Subscription
+        var updated = await _subscriptionsRepository.UpdateByUserId(broadcaster.Id, userId, MsgId, args["msg-param-sub-plan"], DateTime.UtcNow);
+
+        if (!updated)
         {
-          BroadcasterId = broadcaster.Id,
-          EndingTimestamp = new DateTimeOffset(DateTime.UtcNow.AddMonths(1)).ToUnixTimeMilliseconds(),
-          Type = MsgId,
-          Plan = args["msg-param-sub-plan"],
-          UserId = userId
-        };
-        await _subscriptions.InsertAsync(subscription);
+          // TODO: Log failure
+        }
       }
       else
       {
-        subscription.EndingTimestamp = new DateTimeOffset(DateTime.UtcNow.AddMonths(1)).ToUnixTimeMilliseconds();
-        subscription.Type = MsgId;
-        subscription.Plan = args["msg-param-sub-plan"];
-        await _subscriptions.UpdateAsync(subscription);
+        var inserted = await _subscriptionsRepository.InsertByUserId(broadcaster.Id, userId, MsgId, args["msg-param-sub-plan"], DateTime.UtcNow);
+
+        if (!inserted)
+        {
+          // TODO: Log failure
+        }
       }
     }
   }

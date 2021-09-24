@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -23,10 +22,10 @@ namespace Pyrewatcher.Commands
     private readonly ILogger<SubsCommand> _logger;
 
     private readonly BroadcasterRepository _broadcastersRepository;
-    private readonly SubscriptionRepository _subscriptionsRepository;
+    private readonly ISubscriptionsRepository _subscriptionsRepository;
 
     public SubsCommand(TwitchClient client, ILogger<SubsCommand> logger, BroadcasterRepository broadcastersRepository,
-                       SubscriptionRepository subscriptionsRepository)
+                       ISubscriptionsRepository subscriptionsRepository)
     {
       _client = client;
       _logger = logger;
@@ -74,14 +73,10 @@ namespace Pyrewatcher.Commands
         return false;
       }
 
-      var endingTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-      var subscriptions = (await _subscriptionsRepository.FindRangeAsync("EndingTimestamp >= @EndingTimestamp AND BroadcasterId = @BroadcasterId",
-                                                               new Subscription {EndingTimestamp = endingTimestamp, BroadcasterId = broadcaster.Id}))
-       .ToList();
+      var subscriptions = await _subscriptionsRepository.GetSubscribersCountByBroadcasterId(broadcaster.Id);
 
       _client.SendMessage(message.Channel,
-                          string.Format(Globals.Locale["subs_response"], message.DisplayName, broadcaster.DisplayName, subscriptions.Count));
+                          string.Format(Globals.Locale["subs_response"], message.DisplayName, broadcaster.DisplayName, subscriptions));
 
       return true;
     }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
 
@@ -10,20 +11,21 @@ namespace Pyrewatcher.Actions
 {
   public class SubgiftAction : IAction
   {
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
     private readonly ILogger<SubgiftAction> _logger;
-    private readonly SubscriptionRepository _subscriptions;
-    private readonly UserRepository _users;
 
-    public SubgiftAction(TwitchClient client, ILogger<SubgiftAction> logger, UserRepository users, SubscriptionRepository subscriptions,
-                         BroadcasterRepository broadcasters)
+    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly ISubscriptionsRepository _subscriptionsRepository;
+    private readonly UserRepository _usersRepository;
+
+    public SubgiftAction(TwitchClient client, ILogger<SubgiftAction> logger, BroadcasterRepository broadcastersRepository,
+                         ISubscriptionsRepository subscriptionsRepository, UserRepository usersRepository)
     {
       _client = client;
       _logger = logger;
-      _users = users;
-      _subscriptions = subscriptions;
-      _broadcasters = broadcasters;
+      _broadcastersRepository = broadcastersRepository;
+      _subscriptionsRepository = subscriptionsRepository;
+      _usersRepository = usersRepository;
     }
 
     public string MsgId
@@ -38,7 +40,7 @@ namespace Pyrewatcher.Actions
       var recipientId = long.Parse(args["msg-param-recipient-id"]);
       var recipientName = args["msg-param-recipient-display-name"];
 
-      var broadcaster = await _broadcasters.FindWithNameByNameAsync(args["broadcaster"]);
+      var broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args["broadcaster"]);
 
       if (broadcaster.SubGreetingsEnabled)
       {
@@ -46,59 +48,54 @@ namespace Pyrewatcher.Actions
       }
 
       // Add gifter
-      var gifter = await _users.FindAsync("Id = @Id", new User {Id = gifterId});
+      var gifter = await _usersRepository.FindAsync("Id = @Id", new User {Id = gifterId});
 
       if (gifter == null)
       {
         gifter = new User {Name = gifterName.ToLower(), DisplayName = gifterName, Id = gifterId};
-        await _users.InsertAsync(gifter);
+        await _usersRepository.InsertAsync(gifter);
         _logger.LogInformation("User {user} inserted to the database", gifterName);
       }
       else
       {
         gifter.DisplayName = gifterName;
         gifter.Name = gifterName.ToLower();
-        await _users.UpdateAsync(gifter);
+        await _usersRepository.UpdateAsync(gifter);
       }
 
       // Add recipient
-      var recipient = await _users.FindAsync("Id = @Id", new User {Id = recipientId});
+      var recipient = await _usersRepository.FindAsync("Id = @Id", new User {Id = recipientId});
 
       if (recipient == null)
       {
         recipient = new User {Name = recipientName.ToLower(), DisplayName = recipientName, Id = recipientId};
-        await _users.InsertAsync(recipient);
+        await _usersRepository.InsertAsync(recipient);
         _logger.LogInformation("User {user} inserted to the database", recipientName);
       }
       else
       {
         recipient.DisplayName = recipientName;
         recipient.Name = recipientName.ToLower();
-        await _users.UpdateAsync(recipient);
+        await _usersRepository.UpdateAsync(recipient);
       }
 
-      // Add subscription entry
-      var subscription = await _subscriptions.FindAsync("BroadcasterId = @BroadcasterId AND UserId = @UserId",
-                                                        new Subscription {BroadcasterId = broadcaster.Id, UserId = recipientId});
-
-      if (subscription == null)
+      if (await _subscriptionsRepository.ExistsByUserId(broadcaster.Id, recipientId))
       {
-        subscription = new Subscription
+        var updated = await _subscriptionsRepository.UpdateByUserId(broadcaster.Id, recipientId, MsgId, args["msg-param-sub-plan"], DateTime.UtcNow);
+
+        if (!updated)
         {
-          BroadcasterId = broadcaster.Id,
-          EndingTimestamp = new DateTimeOffset(DateTime.UtcNow.AddMonths(1)).ToUnixTimeMilliseconds(),
-          Type = MsgId,
-          Plan = args["msg-param-sub-plan"],
-          UserId = recipientId
-        };
-        await _subscriptions.InsertAsync(subscription);
+          // TODO: Log failure
+        }
       }
       else
       {
-        subscription.EndingTimestamp = new DateTimeOffset(DateTime.UtcNow.AddMonths(1)).ToUnixTimeMilliseconds();
-        subscription.Type = MsgId;
-        subscription.Plan = args["msg-param-sub-plan"];
-        await _subscriptions.UpdateAsync(subscription);
+        var inserted = await _subscriptionsRepository.InsertByUserId(broadcaster.Id, recipientId, MsgId, args["msg-param-sub-plan"], DateTime.UtcNow);
+
+        if (!inserted)
+        {
+          // TODO: Log failure
+        }
       }
     }
   }
