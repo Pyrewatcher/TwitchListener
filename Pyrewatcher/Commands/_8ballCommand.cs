@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
-using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -21,21 +20,15 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly ILogger<_8ballCommand> _logger;
 
-    private readonly CommandRepository _commandsRepository;
-    private readonly CommandVariableRepository _commandVariablesRepository;
-
-    public _8ballCommand(TwitchClient client, ILogger<_8ballCommand> logger, CommandRepository commandsRepository,
-                         CommandVariableRepository commandVariablesRepository)
+    public _8ballCommand(TwitchClient client, ILogger<_8ballCommand> logger)
     {
       _client = client;
       _logger = logger;
-      _commandsRepository = commandsRepository;
-      _commandVariablesRepository = commandVariablesRepository;
     }
 
     private _8ballCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
     {
-      if (argsList.Count == 0)
+      if (argsList.Any())
       {
         _client.SendMessage(message.Channel, string.Format(Globals.Locale["8ball_usage"], message.DisplayName));
         _logger.LogInformation("Question not provided - returning");
@@ -48,25 +41,23 @@ namespace Pyrewatcher.Commands
       return args;
     }
 
-    public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
+    public Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var args = ParseAndValidateArguments(argsList, message);
 
       if (args is null)
       {
-        return false;
+        return Task.FromResult(false);
       }
+      
+      var responseAmount = Globals.Locale.Count(x => x.Key.StartsWith("8ball_"));
 
-      var command = await _commandsRepository.FindAsync("Name = @Name", new Command {Name = "8ball"});
-
-      var numberOfResponsesVariable = await _commandVariablesRepository.FindAsync("CommandId = @CommandId AND Name = @Name",
-                                                                        new CommandVariable {CommandId = command.Id, Name = "numberOfResponses"});
-      var responseNumber = Math.Abs(args.Question.GetHashCode()) % int.Parse(numberOfResponsesVariable.Value) + 1;
+      var responseNumber = Math.Abs(args.Question.GetHashCode()) % responseAmount;
 
       _client.SendMessage(message.Channel,
                           string.Format(Globals.Locale["8ball_response"], message.DisplayName, Globals.Locale[$"8ball_{responseNumber}"]));
 
-      return true;
+      return Task.FromResult(true);
     }
   }
 }
