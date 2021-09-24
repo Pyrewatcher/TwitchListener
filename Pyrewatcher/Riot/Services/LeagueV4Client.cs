@@ -13,9 +13,12 @@ namespace Pyrewatcher.Riot.Services
   {
     private readonly IConfiguration _config;
 
-    public LeagueV4Client(IConfiguration config)
+    private readonly RiotRateLimiter _rateLimiter;
+
+    public LeagueV4Client(IConfiguration config, RiotRateLimiter rateLimiter)
     {
       _config = config;
+      _rateLimiter = rateLimiter;
     }
 
     private IFlurlRequest BaseRequest(Server server)
@@ -28,6 +31,11 @@ namespace Pyrewatcher.Riot.Services
 
     public async Task<IEnumerable<LeagueEntryV4Dto>> GetLeagueEntriesBySummonerId(string summonerId, Server server)
     {
+      if (!_rateLimiter.PickToken(Game.LeagueOfLegends, server))
+      {
+        return null;
+      }
+
       var request = BaseRequest(server).AppendPathSegments("entries", "by-summoner", summonerId);
 
       var response = await request.GetAsync<IEnumerable<LeagueEntryV4Dto>>();

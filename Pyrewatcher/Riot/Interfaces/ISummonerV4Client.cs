@@ -4,7 +4,7 @@ using Pyrewatcher.Riot.Models;
 
 namespace Pyrewatcher.Riot.Interfaces
 {
-  public interface ISummonerV4Client : IRiotClient
+  public interface ISummonerV4Client
   {
     Task<SummonerV4Dto> GetSummonerByName(string summonerName, Server server);
     Task<SummonerV4Dto> GetSummonerByPuuid(string puuid, Server server);

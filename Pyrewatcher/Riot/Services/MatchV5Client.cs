@@ -12,9 +12,13 @@ namespace Pyrewatcher.Riot.Services
   public class MatchV5Client : IMatchV5Client
   {
     private readonly IConfiguration _configuration;
-    public MatchV5Client(IConfiguration configuration)
+
+    private readonly RiotRateLimiter _rateLimiter;
+
+    public MatchV5Client(IConfiguration configuration, RiotRateLimiter rateLimiter)
     {
       _configuration = configuration;
+      _rateLimiter = rateLimiter;
     }
 
     private IFlurlRequest BaseRequest(RoutingValue routingValue)
@@ -29,6 +33,11 @@ namespace Pyrewatcher.Riot.Services
                                                                         long? endTime = null, int? queue = null, string type = null,
                                                                         int? start = null, int? count = null)
     {
+      if (!_rateLimiter.PickToken(Game.LeagueOfLegends, routingValue))
+      {
+        return null;
+      }
+
       var request = BaseRequest(routingValue).AppendPathSegments("matches", "by-puuid", puuid, "ids");
 
       if (startTime.HasValue)
@@ -63,6 +72,11 @@ namespace Pyrewatcher.Riot.Services
 
     public async Task<MatchV5Dto> GetMatchById(string matchId, RoutingValue routingValue)
     {
+      if (!_rateLimiter.PickToken(Game.LeagueOfLegends, routingValue))
+      {
+        return null;
+      }
+
       var request = BaseRequest(routingValue).AppendPathSegments("matches", matchId);
 
       var response = await request.GetAsync<MatchV5Dto>();

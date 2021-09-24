@@ -39,11 +39,11 @@ namespace Pyrewatcher.Commands
 
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly Utilities _utilities;
-    private readonly ISummonerV4Client _summonerV4;
+    private readonly IRiotClient _riotClient;
 
     public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, BroadcasterRepository broadcastersRepository,
                           IRiotAccountsRepository riotAccountsRepository, RiotTftApiHelper riotTftApiHelper, Utilities utilities,
-                          ISummonerV4Client summonerV4)
+                          IRiotClient riotClient)
     {
       _client = client;
       _logger = logger;
@@ -51,7 +51,7 @@ namespace Pyrewatcher.Commands
       _riotAccountsRepository = riotAccountsRepository;
       _riotTftApiHelper = riotTftApiHelper;
       _utilities = utilities;
-      _summonerV4 = summonerV4;
+      _riotClient = riotClient;
     }
 
     private AccountCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
@@ -318,7 +318,7 @@ namespace Pyrewatcher.Commands
           // get data about the account from Riot Summoner API
           data = args.Game.ToLower() switch
           {
-            "lol" => await _summonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true)),
+            "lol" => await _riotClient.SummonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true)),
             "tft" => await _riotTftApiHelper.SummonerGetByName(args.SummonerName, serverApiCode),
             _ => null
           };
@@ -448,7 +448,7 @@ namespace Pyrewatcher.Commands
 
           data = account.GameAbbreviation.ToLower() switch
           {
-            "lol" => await _summonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true)),
+            "lol" => await _riotClient.SummonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true)),
             "tft" => await _riotTftApiHelper.SummonerGetByAccountId(account.AccountId, _utilities.GetServerApiCode(account.ServerCode)),
             _ => null
           };

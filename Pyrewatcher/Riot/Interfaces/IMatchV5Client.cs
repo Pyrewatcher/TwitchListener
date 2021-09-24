@@ -5,7 +5,7 @@ using Pyrewatcher.Riot.Models;
 
 namespace Pyrewatcher.Riot.Interfaces
 {
-  public interface IMatchV5Client : IRiotClient
+  public interface IMatchV5Client
   {
     Task<IEnumerable<string>> GetMatchesByPuuid(string puuid, RoutingValue routingValue, long? startTime = null, long? endTime = null,
                                                            int? queue = null, string type = null, int? start = null, int? count = null);
