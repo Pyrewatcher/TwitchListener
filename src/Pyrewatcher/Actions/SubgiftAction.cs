@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
@@ -16,10 +15,10 @@ namespace Pyrewatcher.Actions
 
     private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly ISubscriptionsRepository _subscriptionsRepository;
-    private readonly UserRepository _usersRepository;
+    private readonly IUsersRepository _usersRepository;
 
     public SubgiftAction(TwitchClient client, ILogger<SubgiftAction> logger, IBroadcastersRepository broadcastersRepository,
-                         ISubscriptionsRepository subscriptionsRepository, UserRepository usersRepository)
+                         ISubscriptionsRepository subscriptionsRepository, IUsersRepository usersRepository)
     {
       _client = client;
       _logger = logger;
@@ -48,35 +47,57 @@ namespace Pyrewatcher.Actions
       }
 
       // Add gifter
-      var gifter = await _usersRepository.FindAsync("Id = @Id", new User {Id = gifterId});
+      var gifter = await _usersRepository.GetUserById(gifterId);
 
-      if (gifter == null)
+      if (gifter is null)
       {
-        gifter = new User {Name = gifterName.ToLower(), DisplayName = gifterName, Id = gifterId};
-        await _usersRepository.InsertAsync(gifter);
-        _logger.LogInformation("User {user} inserted to the database", gifterName);
+        gifter = new User(gifterId, gifterName);
+        var inserted = await _usersRepository.InsertUser(gifter);
+
+        if (inserted)
+        {
+          _logger.LogInformation("User {user} inserted to the database", gifterName);
+        }
+        else
+        {
+          // TODO: Log failure
+        }
       }
       else
       {
-        gifter.DisplayName = gifterName;
-        gifter.Name = gifterName.ToLower();
-        await _usersRepository.UpdateAsync(gifter);
+        var updated = await _usersRepository.UpdateNameById(gifterId, gifterName);
+
+        if (!updated)
+        {
+          // TODO: Log failure
+        }
       }
 
       // Add recipient
-      var recipient = await _usersRepository.FindAsync("Id = @Id", new User {Id = recipientId});
+      var recipient = await _usersRepository.GetUserById(recipientId);
 
-      if (recipient == null)
+      if (recipient is null)
       {
-        recipient = new User {Name = recipientName.ToLower(), DisplayName = recipientName, Id = recipientId};
-        await _usersRepository.InsertAsync(recipient);
-        _logger.LogInformation("User {user} inserted to the database", recipientName);
+        recipient = new User(recipientId, recipientName);
+        var inserted = await _usersRepository.InsertUser(recipient);
+
+        if (inserted)
+        {
+          _logger.LogInformation("User {user} inserted to the database", recipientName);
+        }
+        else
+        {
+          // TODO: Log failure
+        }
       }
       else
       {
-        recipient.DisplayName = recipientName;
-        recipient.Name = recipientName.ToLower();
-        await _usersRepository.UpdateAsync(recipient);
+        var updated = await _usersRepository.UpdateNameById(recipientId, recipientName);
+
+        if (!updated)
+        {
+          // TODO: Log failure
+        }
       }
 
       if (await _subscriptionsRepository.ExistsByUserId(broadcaster.Id, recipientId))

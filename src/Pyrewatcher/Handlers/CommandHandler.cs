@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.Commands;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
@@ -21,7 +20,7 @@ namespace Pyrewatcher.Handlers
     private readonly IAliasesRepository _aliasesRepository;
     private readonly ICommandsRepository _commandsRepository;
     private readonly ILatestCommandExecutionsRepository _latestCommandExecutionsRepository;
-    private readonly UserRepository _usersRepository;
+    private readonly IUsersRepository _usersRepository;
 
     private readonly CommandHelpers _commandHelpers;
     private readonly TemplateCommandHandler _templateCommandHandler;
@@ -29,7 +28,7 @@ namespace Pyrewatcher.Handlers
     private readonly IDictionary<string, ICommand> _commandClasses;
 
     public CommandHandler(IHost host, ILogger<CommandHandler> logger, IAliasesRepository aliasesRepository, ICommandsRepository commandsRepository,
-                          ILatestCommandExecutionsRepository latestCommandExecutionsRepository, UserRepository usersRepository,
+                          ILatestCommandExecutionsRepository latestCommandExecutionsRepository, IUsersRepository usersRepository,
                           CommandHelpers commandHelpers, TemplateCommandHandler templateCommandHandler)
     {
       _logger = logger;
@@ -91,19 +90,30 @@ namespace Pyrewatcher.Handlers
 
       var userId = long.Parse(chatMessage.UserId);
       // Add sender if sender doesn't exist in the database, update if does
-      var sender = await _usersRepository.FindAsync("Id = @Id", new User {Id = userId});
+      var sender = await _usersRepository.GetUserById(userId);
 
-      if (sender == null)
+      if (sender is null)
       {
-        sender = new User {Name = chatMessage.Username, DisplayName = chatMessage.DisplayName, Id = userId};
-        await _usersRepository.InsertAsync(sender);
-        //_logger.LogInformation("User {user} inserted to the database", commandDeserialized["display-name"]);
+        sender = new User(userId, chatMessage.DisplayName);
+        var inserted = await _usersRepository.InsertUser(sender);
+
+        if (inserted)
+        {
+         //  _logger.LogInformation("User {user} inserted to the database", chatMessage.DisplayName);
+        }
+        else
+        {
+          // TODO: Log failure
+        }
       }
       else
       {
-        sender.DisplayName = chatMessage.DisplayName;
-        sender.Name = chatMessage.Username;
-        await _usersRepository.UpdateAsync(sender);
+        var updated = await _usersRepository.UpdateNameById(userId, chatMessage.DisplayName);
+
+        if (!updated)
+        {
+          // TODO: Log failure
+        }
       }
 
       // Check if sender is permitted to use the command - return if not

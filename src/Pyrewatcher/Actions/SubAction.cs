@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
@@ -16,10 +15,10 @@ namespace Pyrewatcher.Actions
 
     private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly ISubscriptionsRepository _subscriptionsRepository;
-    private readonly UserRepository _usersRepository;
+    private readonly IUsersRepository _usersRepository;
 
     public SubAction(TwitchClient client, ILogger<SubAction> logger, IBroadcastersRepository broadcastersRepository,
-                     ISubscriptionsRepository subscriptionsRepository, UserRepository usersRepository)
+                     ISubscriptionsRepository subscriptionsRepository, IUsersRepository usersRepository)
     {
       _client = client;
       _logger = logger;
@@ -45,19 +44,30 @@ namespace Pyrewatcher.Actions
         _client.SendMessage(broadcaster.Name, $"@{userName} {broadcaster.SubGreetingEmote}");
       }
 
-      var user = await _usersRepository.FindAsync("Id = @Id", new User {Id = userId});
+      var user = await _usersRepository.GetUserById(userId);
 
-      if (user == null)
+      if (user is null)
       {
-        user = new User {Name = userName.ToLower(), DisplayName = userName, Id = userId};
-        await _usersRepository.InsertAsync(user);
-        _logger.LogInformation("User {user} inserted to the database", userName);
+        user = new User(userId, userName);
+        var inserted = await _usersRepository.InsertUser(user);
+
+        if (inserted)
+        {
+          _logger.LogInformation("User {user} inserted to the database", userName);
+        }
+        else
+        {
+          // TODO: Log failure
+        }
       }
       else
       {
-        user.DisplayName = userName;
-        user.Name = userName.ToLower();
-        await _usersRepository.UpdateAsync(user);
+        var updated = await _usersRepository.UpdateNameById(userId, userName);
+
+        if (!updated)
+        {
+          // TODO: Log failure
+        }
       }
 
       if (await _subscriptionsRepository.ExistsByUserId(broadcaster.Id, userId))

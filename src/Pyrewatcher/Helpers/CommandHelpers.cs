@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
@@ -21,14 +20,14 @@ namespace Pyrewatcher.Helpers
     private readonly ILolMatchesRepository _lolMatchesRepository;
     private readonly IRiotAccountsRepository _riotAccountsRepository;
     private readonly ITftMatchesRepository _tftMatchesRepository;
-    private readonly UserRepository _usersRepository;
+    private readonly IUsersRepository _usersRepository;
 
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly IRiotClient _riotClient;
 
     public CommandHelpers(IConfiguration config, IBansRepository bansRepository, ILolMatchesRepository lolMatchesRepository,
-                          IRiotAccountsRepository riotAccountsRepository, ITftMatchesRepository tftMatchesRepository, UserRepository usersRepository,
+                          IRiotAccountsRepository riotAccountsRepository, ITftMatchesRepository tftMatchesRepository, IUsersRepository usersRepository,
                           RiotTftApiHelper riotTftApiHelper, TwitchApiHelper twitchApiHelper, IRiotClient riotClient)
     {
       _bansRepository = bansRepository;
@@ -306,8 +305,8 @@ namespace Pyrewatcher.Helpers
     public async Task<User> GetUser(string userName)
     {
       userName = userName.ToLower().TrimStart('@');
-
-      var user = await _usersRepository.FindAsync("Name = @Name", new User {Name = userName});
+      
+      var user = await _usersRepository.GetUserByName(userName);
 
       if (user is null) // user does not exist in the database - retrieve user id from Twitch API
       {
@@ -317,14 +316,25 @@ namespace Pyrewatcher.Helpers
         {
           return null;
         }
-
-        if (await _usersRepository.FindAsync("Id = @Id", user) is not null)
+        
+        //if (await _usersRepository.FindAsync("Id = @Id", user) is not null)
+        if (await _usersRepository.ExistsById(user.Id))
         {
-          await _usersRepository.UpdateAsync(user);
+          var updated = await _usersRepository.UpdateNameById(user.Id, user.DisplayName);
+
+          if (!updated)
+          {
+            // TODO: Log failure
+          }
         }
         else
         {
-          await _usersRepository.InsertAsync(user);
+          var inserted = await _usersRepository.InsertUser(user);
+
+          if (!inserted)
+          {
+            // TODO: Log failure
+          }
         }
       }
 

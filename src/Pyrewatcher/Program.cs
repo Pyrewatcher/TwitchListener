@@ -120,34 +120,7 @@ namespace Pyrewatcher
                     {
                       services.AddSingleton(actionType);
                     }
-
-                    var repositoryTypes = Assembly.GetExecutingAssembly()
-                                                  .GetTypes()
-                                                  .Where(x => x.IsClass)
-                                                  .Where(x => x.Name.EndsWith("Repository") && x.Name != "Repository")
-                                                   // omit classes being part of the refactor
-                                                  .Where(x => x.Name != "AliasesRepository")
-                                                  .Where(x => x.Name != "BansRepository")
-                                                  .Where(x => x.Name != "BroadcastersRepository")
-                                                  .Where(x => x.Name != "CommandsRepository")
-                                                  .Where(x => x.Name != "CommandVariablesRepository")
-                                                  .Where(x => x.Name != "LatestCommandExecutionsRepository")
-                                                  .Where(x => x.Name != "LocalizationRepository")
-                                                  .Where(x => x.Name != "LolChampionsRepository")
-                                                  .Where(x => x.Name != "LolMatchesRepository")
-                                                  .Where(x => x.Name != "LolRunesRepository")
-                                                  .Where(x => x.Name != "RiotAccountsRepository")
-                                                  .Where(x => x.Name != "SubscriptionsRepository")
-                                                  .Where(x => x.Name != "TftMatchesRepository")
-                                                  // refactor part end
-                                                  .ToList();
-
-                    foreach (var repositoryType in repositoryTypes)
-                    {
-                      services.AddSingleton(repositoryType);
-                    }
                     
-                    // register classes being part of the refactor separately
                     services.AddTransient<IAliasesRepository, AliasesRepository>();
                     services.AddTransient<IBansRepository, BansRepository>();
                     services.AddTransient<IBroadcastersRepository, BroadcastersRepository>();
@@ -161,7 +134,7 @@ namespace Pyrewatcher
                     services.AddTransient<IRiotAccountsRepository, RiotAccountsRepository>();
                     services.AddTransient<ISubscriptionsRepository, SubscriptionsRepository>();
                     services.AddTransient<ITftMatchesRepository, TftMatchesRepository>();
-                    // refactor part end
+                    services.AddTransient<IUsersRepository, UsersRepository>();
 
                     services.AddSingleton<Bot>();
                   });

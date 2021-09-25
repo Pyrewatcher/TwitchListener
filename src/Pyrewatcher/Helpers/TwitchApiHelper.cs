@@ -88,7 +88,7 @@ namespace Pyrewatcher.Helpers
 
     public async Task<User> GetUserByName(string userName)
     {
-      var output = new User();
+      User output;
 
       var url = $"https://api.twitch.tv/helix/users?login={userName}";
 
@@ -101,18 +101,16 @@ namespace Pyrewatcher.Helpers
 
         if (responseContent.Data.Count > 0)
         {
-          output.Id = responseContent.Data[0].Id;
-          output.DisplayName = responseContent.Data[0].Display_Name;
-          output.Name = responseContent.Data[0].Display_Name.ToLower();
+          output = new User(responseContent.Data[0].Id, responseContent.Data[0].Display_Name);
         }
         else
         {
-          output.Id = 0;
+          output = new User(0, null);
         }
       }
       else
       {
-        output.Id = -1;
+        output = new User(-1, null);
       }
 
       return output;
