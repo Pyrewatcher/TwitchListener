@@ -1,17 +1,13 @@
-﻿using System.ComponentModel;
-
-namespace Pyrewatcher.DatabaseModels
+﻿namespace Pyrewatcher.DatabaseModels
 {
   public class Broadcaster
   {
     public long Id { get; set; }
-    public bool Connected { get; set; } = false;
-    public bool SubGreetingsEnabled { get; set; } = false;
-    public string SubGreetingEmote { get; set; } = "HeyGuys";
+    public bool Connected { get; set; }
+    public bool SubGreetingsEnabled { get; set; }
+    public string SubGreetingEmote { get; set; }
+    public string DisplayName { get; set; }
 
-    [Description("ignore")] public string DisplayName { get; set; }
-
-    [Description("ignore")]
     public string Name
     {
       get => DisplayName.ToLower();

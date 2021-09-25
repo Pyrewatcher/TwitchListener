@@ -14,11 +14,11 @@ namespace Pyrewatcher.Actions
     private readonly TwitchClient _client;
     private readonly ILogger<ResubAction> _logger;
 
-    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly ISubscriptionsRepository _subscriptionsRepository;
     private readonly UserRepository _usersRepository;
 
-    public ResubAction(TwitchClient client, ILogger<ResubAction> logger, BroadcasterRepository broadcastersRepository,
+    public ResubAction(TwitchClient client, ILogger<ResubAction> logger, IBroadcastersRepository broadcastersRepository,
                        ISubscriptionsRepository subscriptionsRepository, UserRepository usersRepository)
     {
       _client = client;
@@ -38,7 +38,7 @@ namespace Pyrewatcher.Actions
       var userId = long.Parse(args["user-id"]);
       var userName = args["display-name"];
 
-      var broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args["broadcaster"]);
+      var broadcaster = await _broadcastersRepository.GetByNameAsync(args["broadcaster"]);
 
       if (broadcaster.SubGreetingsEnabled)
       {

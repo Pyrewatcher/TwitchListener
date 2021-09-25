@@ -1,22 +1,20 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using TwitchLib.Client;
 
 namespace Pyrewatcher.Actions
 {
   public class GiftpaidupgradeAction : IAction
   {
-    private readonly BroadcasterRepository _broadcasters;
     private readonly TwitchClient _client;
-    private readonly ILogger<GiftpaidupgradeAction> _logger;
 
-    public GiftpaidupgradeAction(TwitchClient client, ILogger<GiftpaidupgradeAction> logger, BroadcasterRepository broadcasters)
+    private readonly IBroadcastersRepository _broadcastersRepository;
+
+    public GiftpaidupgradeAction(TwitchClient client, IBroadcastersRepository broadcastersRepository)
     {
       _client = client;
-      _logger = logger;
-      _broadcasters = broadcasters;
+      _broadcastersRepository = broadcastersRepository;
     }
 
     public string MsgId
@@ -26,7 +24,7 @@ namespace Pyrewatcher.Actions
 
     public async Task PerformAsync(Dictionary<string, string> args)
     {
-      var broadcaster = await _broadcasters.FindWithNameByNameAsync(args["broadcaster"]);
+      var broadcaster = await _broadcastersRepository.GetByNameAsync(args["broadcaster"]);
 
       if (broadcaster.SubGreetingsEnabled)
       {

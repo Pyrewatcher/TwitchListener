@@ -2,24 +2,24 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
 
 namespace Pyrewatcher.Handlers
 {
   public class CyclicTasksHandler
   {
-    private readonly BroadcasterRepository _broadcasters;
+    private readonly IBroadcastersRepository _broadcastersRepository;
+
     private readonly CommandHelpers _commandHelpers;
-    private readonly ILogger<CyclicTasksHandler> _logger;
+
     private readonly List<Task> _tasks = new();
 
-    public CyclicTasksHandler(ILogger<CyclicTasksHandler> logger, CommandHelpers commandHelpers, BroadcasterRepository broadcasters)
+    public CyclicTasksHandler(IBroadcastersRepository broadcastersRepository, CommandHelpers commandHelpers)
     {
-      _logger = logger;
+      _broadcastersRepository = broadcastersRepository;
       _commandHelpers = commandHelpers;
-      _broadcasters = broadcasters;
+
       CreateTasks();
     }
 
@@ -29,7 +29,7 @@ namespace Pyrewatcher.Handlers
       {
         while (true)
         {
-          var broadcasters = (await _broadcasters.FindWithNameAllConnectedAsync()).ToList();
+          var broadcasters = (await _broadcastersRepository.GetConnectedAsync()).ToList();
           await _commandHelpers.UpdateLolMatchDataForBroadcasters(broadcasters);
           await Task.Delay(TimeSpan.FromSeconds(1));
           await _commandHelpers.UpdateTftMatchDataForBroadcasters(broadcasters);

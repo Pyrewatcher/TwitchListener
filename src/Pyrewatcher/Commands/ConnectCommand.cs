@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Helpers;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -22,12 +22,12 @@ namespace Pyrewatcher.Commands
     private readonly IConfiguration _config;
     private readonly ILogger<ConnectCommand> _logger;
 
-    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IBroadcastersRepository _broadcastersRepository;
 
     private readonly CommandHelpers _commandHelpers;
     private readonly DatabaseHelpers _databaseHelpers;
 
-    public ConnectCommand(TwitchClient client, IConfiguration config, ILogger<ConnectCommand> logger, BroadcasterRepository broadcastersRepository,
+    public ConnectCommand(TwitchClient client, IConfiguration config, ILogger<ConnectCommand> logger, IBroadcastersRepository broadcastersRepository,
                           CommandHelpers commandHelpers, DatabaseHelpers databaseHelpers)
     {
       _client = client;
@@ -83,23 +83,30 @@ namespace Pyrewatcher.Commands
       // connect to broadcaster
       _client.JoinChannel(broadcaster.Name);
       broadcaster.Connected = true;
-      await _broadcastersRepository.UpdateAsync(broadcaster);
+      var updated = await _broadcastersRepository.ToggleConnectedByIdAsync(broadcaster.Id);
 
-      // perform tasks
-      if (broadcaster.Name != _config.GetSection("Twitch")["Username"].ToLower())
+      if (updated)
       {
-        new Task(async () =>
+        // perform tasks
+        if (broadcaster.Name != _config.GetSection("Twitch")["Username"].ToLower())
         {
-          await _commandHelpers.UpdateLolMatchDataForBroadcaster(broadcaster);
-          await _commandHelpers.UpdateTftMatchDataForBroadcaster(broadcaster);
-          await _commandHelpers.UpdateChattersForBroadcaster(broadcaster);
-          await _commandHelpers.UpdateLolRankDataForBroadcaster(broadcaster);
-          await _commandHelpers.UpdateTftRankDataForBroadcaster(broadcaster);
-        }).Start();
-      }
+          new Task(async () =>
+          {
+            await _commandHelpers.UpdateLolMatchDataForBroadcaster(broadcaster);
+            await _commandHelpers.UpdateTftMatchDataForBroadcaster(broadcaster);
+            await _commandHelpers.UpdateChattersForBroadcaster(broadcaster);
+            await _commandHelpers.UpdateLolRankDataForBroadcaster(broadcaster);
+            await _commandHelpers.UpdateTftRankDataForBroadcaster(broadcaster);
+          }).Start();
+        }
 
-      // send message
-      _client.SendMessage(message.Channel, string.Format(Globals.Locale["connect_connected"], message.DisplayName, broadcaster.DisplayName));
+        // send message
+        _client.SendMessage(message.Channel, string.Format(Globals.Locale["connect_connected"], message.DisplayName, broadcaster.DisplayName));
+      }
+      else
+      {
+        // TODO: Message failure
+      }
 
       return true;
     }

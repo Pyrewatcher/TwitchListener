@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
@@ -23,12 +22,12 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly ILogger<ReloadCommand> _logger;
 
-    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly ILocalizationRepository _localizationRepository;
 
     private readonly CommandHelpers _commandHelpers;
 
-    public ReloadCommand(TwitchClient client, ILogger<ReloadCommand> logger, BroadcasterRepository broadcastersRepository,
+    public ReloadCommand(TwitchClient client, ILogger<ReloadCommand> logger, IBroadcastersRepository broadcastersRepository,
                          ILocalizationRepository localizationRepository, CommandHelpers commandHelpers)
     {
       _client = client;
@@ -71,14 +70,14 @@ namespace Pyrewatcher.Commands
 
           return true;
         case "ranks" or "ranga":
-          broadcasters = (await _broadcastersRepository.FindWithNameAllConnectedAsync()).ToList();
+          broadcasters = (await _broadcastersRepository.GetConnectedAsync()).ToList();
           await _commandHelpers.UpdateLolRankDataForBroadcasters(broadcasters);
           await _commandHelpers.UpdateTftRankDataForBroadcasters(broadcasters);
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["reload_ranks"], message.DisplayName));
 
           return true;
         case "matches" or "lol" or "kda" or "tft":
-          broadcasters = (await _broadcastersRepository.FindWithNameAllConnectedAsync()).ToList();
+          broadcasters = (await _broadcastersRepository.GetConnectedAsync()).ToList();
           await _commandHelpers.UpdateLolMatchDataForBroadcasters(broadcasters);
           await _commandHelpers.UpdateTftMatchDataForBroadcasters(broadcasters);
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["reload_matches"], message.DisplayName));

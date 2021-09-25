@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Handlers;
 using TwitchLib.Client;
@@ -16,25 +15,28 @@ namespace Pyrewatcher
 {
   public class Bot
   {
-    private readonly ActionHandler _actionHandler;
-    private readonly BroadcasterRepository _broadcasters;
-    private readonly ILocalizationRepository _localization;
     private readonly TwitchClient _client;
-    private readonly CommandHandler _commandHandler;
-    private readonly IConfiguration _configuration;
-    private readonly CyclicTasksHandler _cyclicTasksHandler;
+    private readonly IConfiguration _config;
     private readonly ILogger<Bot> _logger;
 
-    public Bot(TwitchClient client, IConfiguration configuration, ILocalizationRepository localization, ILogger<Bot> logger,
-               BroadcasterRepository broadcasters, CommandHandler commandHandler, ActionHandler actionHandler, CyclicTasksHandler cyclicTasksHandler)
+    private readonly IBroadcastersRepository _broadcastersRepository;
+    private readonly ILocalizationRepository _localizationRepository;
+
+    private readonly ActionHandler _actionHandler;
+    private readonly CommandHandler _commandHandler;
+    private readonly CyclicTasksHandler _cyclicTasksHandler;
+
+    public Bot(TwitchClient client, IConfiguration config, ILogger<Bot> logger, IBroadcastersRepository broadcastersRepository,
+               ILocalizationRepository localizationRepository, ActionHandler actionHandler, CommandHandler commandHandler,
+               CyclicTasksHandler cyclicTasksHandler)
     {
       _client = client;
-      _configuration = configuration;
-      _localization = localization;
+      _config = config;
       _logger = logger;
-      _broadcasters = broadcasters;
-      _commandHandler = commandHandler;
+      _broadcastersRepository = broadcastersRepository;
+      _localizationRepository = localizationRepository;
       _actionHandler = actionHandler;
+      _commandHandler = commandHandler;
       _cyclicTasksHandler = cyclicTasksHandler;
     }
 
@@ -55,10 +57,10 @@ namespace Pyrewatcher
       _client.OnReSubscriber += OnReSubscriber;
       _client.OnUnaccountedFor += OnUnaccountedFor;
 
-      var channels = (await _broadcasters.FindWithNameAllConnectedAsync()).Select(x => x.Name).ToList();
-      Globals.Locale = await _localization.GetLocalizationByCodeAsync(Globals.LocaleCode);
+      var channels = (await _broadcastersRepository.GetConnectedAsync()).Select(x => x.Name).ToList();
+      Globals.Locale = await _localizationRepository.GetLocalizationByCodeAsync(Globals.LocaleCode);
 
-      var credentials = new ConnectionCredentials(_configuration.GetSection("Twitch")["Username"], _configuration.GetSection("Twitch")["IrcToken"],
+      var credentials = new ConnectionCredentials(_config.GetSection("Twitch")["Username"], _config.GetSection("Twitch")["IrcToken"],
                                                   capabilities: new Capabilities(false));
 
       _client.Initialize(credentials, channels);

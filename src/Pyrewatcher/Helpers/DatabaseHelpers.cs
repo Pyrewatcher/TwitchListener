@@ -1,32 +1,34 @@
 ﻿using System.Threading.Tasks;
 using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 
 namespace Pyrewatcher.Helpers
 {
   public class DatabaseHelpers
   {
-    private readonly BroadcasterRepository _broadcasters;
-    private readonly TwitchApiHelper _twitchApiHelper;
-    private readonly UserRepository _users;
+    private readonly IBroadcastersRepository _broadcastersRepository;
+    private readonly UserRepository _usersRepository;
 
-    public DatabaseHelpers(BroadcasterRepository broadcasters, UserRepository users, TwitchApiHelper twitchApiHelper)
+    private readonly TwitchApiHelper _twitchApiHelper;
+
+    public DatabaseHelpers(IBroadcastersRepository broadcastersRepository, UserRepository usersRepository, TwitchApiHelper twitchApiHelper)
     {
-      _broadcasters = broadcasters;
-      _users = users;
+      _broadcastersRepository = broadcastersRepository;
+      _usersRepository = usersRepository;
       _twitchApiHelper = twitchApiHelper;
     }
 
     public async Task<Broadcaster> GetBroadcaster(string broadcasterName)
     {
-      var broadcaster = await _broadcasters.FindWithNameByNameAsync(broadcasterName);
+      var broadcaster = await _broadcastersRepository.GetByNameAsync(broadcasterName);
 
       if (broadcaster != null)
       {
         return broadcaster;
       }
 
-      var user = await _users.FindAsync("Name = @Name", new User {Name = broadcasterName.ToLower()});
+      var user = await _usersRepository.FindAsync("Name = @Name", new User {Name = broadcasterName.ToLower()});
 
       if (user == null)
       {
@@ -37,13 +39,22 @@ namespace Pyrewatcher.Helpers
           return null;
         }
 
-        await _users.InsertAsync(user);
+        await _usersRepository.InsertAsync(user);
       }
 
-      broadcaster = new Broadcaster {Id = user.Id, DisplayName = user.DisplayName};
-      await _broadcasters.InsertAsync(broadcaster);
+      var inserted = await _broadcastersRepository.InsertAsync(user.Id);
 
-      return broadcaster;
+      if (inserted)
+      {
+        broadcaster = await _broadcastersRepository.GetByNameAsync(broadcasterName);
+
+        return broadcaster;
+      }
+      else
+      {
+        // TODO: Log failure
+        return null;
+      }
     }
   }
 }

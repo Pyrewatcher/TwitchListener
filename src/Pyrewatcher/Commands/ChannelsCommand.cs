@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Configuration;
-using Pyrewatcher.DataAccess;
+using Pyrewatcher.DataAccess.Interfaces;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -15,9 +15,9 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly IConfiguration _config;
 
-    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IBroadcastersRepository _broadcastersRepository;
 
-    public ChannelsCommand(TwitchClient client, IConfiguration config, BroadcasterRepository broadcastersRepository)
+    public ChannelsCommand(TwitchClient client, IConfiguration config, IBroadcastersRepository broadcastersRepository)
     {
       _client = client;
       _config = config;
@@ -26,7 +26,7 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var channels = (await _broadcastersRepository.FindWithNameAllConnectedAsync()).Where(x => x.Name != _config.GetSection("Twitch")["Username"].ToLower())
+      var channels = (await _broadcastersRepository.GetConnectedAsync()).Where(x => x.Name != _config.GetSection("Twitch")["Username"].ToLower())
                                                                           .Select(x => x.DisplayName)
                                                                           .OrderBy(x => x)
                                                                           .ToList();

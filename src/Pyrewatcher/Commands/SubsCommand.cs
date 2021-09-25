@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
@@ -21,10 +20,10 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly ILogger<SubsCommand> _logger;
 
-    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly ISubscriptionsRepository _subscriptionsRepository;
 
-    public SubsCommand(TwitchClient client, ILogger<SubsCommand> logger, BroadcasterRepository broadcastersRepository,
+    public SubsCommand(TwitchClient client, ILogger<SubsCommand> logger, IBroadcastersRepository broadcastersRepository,
                        ISubscriptionsRepository subscriptionsRepository)
     {
       _client = client;
@@ -58,11 +57,11 @@ namespace Pyrewatcher.Commands
 
       if (args.Broadcaster != null)
       {
-        broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster.ToLower());
+        broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
       }
       else
       {
-        broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+        broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
       }
 
       if (broadcaster == null)

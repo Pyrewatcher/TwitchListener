@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
@@ -34,14 +33,14 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly ILogger<AccountCommand> _logger;
 
-    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly IRiotAccountsRepository _riotAccountsRepository;
 
     private readonly RiotTftApiHelper _riotTftApiHelper;
     private readonly Utilities _utilities;
     private readonly IRiotClient _riotClient;
 
-    public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, BroadcasterRepository broadcastersRepository,
+    public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, IBroadcastersRepository broadcastersRepository,
                           IRiotAccountsRepository riotAccountsRepository, RiotTftApiHelper riotTftApiHelper, Utilities utilities,
                           IRiotClient riotClient)
     {
@@ -199,7 +198,7 @@ namespace Pyrewatcher.Commands
           if (args.Broadcaster is not null)
           {
             // get given broadcaster
-            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster.ToLower());
+            broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
             if (broadcaster is null)
@@ -214,7 +213,7 @@ namespace Pyrewatcher.Commands
           else
           {
             // get current broadcaster
-            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+            broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
           }
 
           // get accounts list
@@ -242,7 +241,7 @@ namespace Pyrewatcher.Commands
           if (args.Broadcaster is not null)
           {
             // get given broadcaster
-            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster);
+            broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
             if (broadcaster is null)
@@ -257,7 +256,7 @@ namespace Pyrewatcher.Commands
           else
           {
             // get current broadcaster
-            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+            broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
           }
 
           // get accounts list
@@ -303,7 +302,7 @@ namespace Pyrewatcher.Commands
           }
 
           // check if account already exists in channel's Riot account list
-          broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+          broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
           account = await _riotAccountsRepository.GetAccountForDisplayByDetailsAsync(args.Game, args.Server, args.SummonerName, broadcaster.Id);
 
           if (account is not null)

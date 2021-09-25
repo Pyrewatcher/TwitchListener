@@ -26,11 +26,11 @@ namespace Pyrewatcher.Commands
     private readonly ILogger<AliasCommand> _logger;
 
     private readonly IAliasesRepository _aliasesRepository;
-    private readonly BroadcasterRepository _broadcastersRepository;
+    private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly CommandRepository _commandsRepository;
 
     public AliasCommand(TwitchClient client, ILogger<AliasCommand> logger, IAliasesRepository aliasesRepository,
-                        BroadcasterRepository broadcastersRepository, CommandRepository commandsRepository)
+                        IBroadcastersRepository broadcastersRepository, CommandRepository commandsRepository)
     {
       _client = client;
       _logger = logger;
@@ -151,7 +151,7 @@ namespace Pyrewatcher.Commands
           if (args.Broadcaster != null)
           {
             // get given broadcaster
-            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(args.Broadcaster.ToLower());
+            broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
 
             // throw an error if broadcaster is not in the database - no need to check if it exists
             if (broadcaster == null)
@@ -164,7 +164,7 @@ namespace Pyrewatcher.Commands
           else
           {
             // get current broadcaster
-            broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+            broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
           }
 
           // get aliases list
@@ -219,7 +219,7 @@ namespace Pyrewatcher.Commands
 
           break;
         case "create": // \alias create <Alias> <Command>
-          broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+          broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
 
           // check if a channel or global alias already exists in the database
           if (await _aliasesRepository.ExistsAnyAliasWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id))
@@ -294,7 +294,7 @@ namespace Pyrewatcher.Commands
 
           break;
         case "delete": // \alias delete <Alias>
-          broadcaster = await _broadcastersRepository.FindWithNameByNameAsync(message.Channel);
+          broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
 
           // get alias id
           var aliasId = await _aliasesRepository.GetAliasIdWithNameByBroadcasterIdAsync(args.Alias, broadcaster.Id);
