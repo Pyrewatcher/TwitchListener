@@ -86,8 +86,6 @@ namespace Pyrewatcher
 
                     services.AddSingleton<CommandHelpers>();
                     services.AddSingleton<TwitchApiHelper>();
-                    services.AddSingleton<RiotTftApiHelper>();
-                    services.AddSingleton<Utilities>();
 
                     services.AddSingleton<RiotRateLimiter>();
                     services.AddSingleton<IRiotClient, RiotClient>();
@@ -95,6 +93,7 @@ namespace Pyrewatcher
                     services.AddSingleton<IMatchV5Client, MatchV5Client>();
                     services.AddSingleton<ISpectatorV4Client, SpectatorV4Client>();
                     services.AddSingleton<ISummonerV4Client, SummonerV4Client>();
+                    services.AddSingleton<ITftLeagueV1Client, TftLeagueV1Client>();
                     services.AddSingleton<ITftMatchV1Client, TftMatchV1Client>();
                     services.AddSingleton<ITftSummonerV1Client, TftSummonerV1Client>();
 

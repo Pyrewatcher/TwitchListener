@@ -20,21 +20,19 @@ namespace Pyrewatcher.Helpers
     private readonly IRiotAccountsRepository _riotAccountsRepository;
     private readonly ITftMatchesRepository _tftMatchesRepository;
     private readonly IUsersRepository _usersRepository;
-
-    private readonly RiotTftApiHelper _riotTftApiHelper;
+    
     private readonly TwitchApiHelper _twitchApiHelper;
     private readonly IRiotClient _riotClient;
 
     public CommandHelpers(IConfiguration config, IBansRepository bansRepository, ILolMatchesRepository lolMatchesRepository,
-                          IRiotAccountsRepository riotAccountsRepository, ITftMatchesRepository tftMatchesRepository, IUsersRepository usersRepository,
-                          RiotTftApiHelper riotTftApiHelper, TwitchApiHelper twitchApiHelper, IRiotClient riotClient)
+                          IRiotAccountsRepository riotAccountsRepository, ITftMatchesRepository tftMatchesRepository,
+                          IUsersRepository usersRepository, TwitchApiHelper twitchApiHelper, IRiotClient riotClient)
     {
       _bansRepository = bansRepository;
       _riotAccountsRepository = riotAccountsRepository;
       _lolMatchesRepository = lolMatchesRepository;
       _usersRepository = usersRepository;
       _tftMatchesRepository = tftMatchesRepository;
-      _riotTftApiHelper = riotTftApiHelper;
       _config = config;
       _twitchApiHelper = twitchApiHelper;
       _riotClient = riotClient;
@@ -273,17 +271,18 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var entriesList = await _riotTftApiHelper.LeagueGetByRiotAccountsList(accounts);
-
-      var zippedList = accounts.Zip(entriesList).ToList();
-
-      foreach ((var account, var entry) in zippedList)
+      foreach (var account in accounts)
       {
-        if (entry.Tier is null || entry.Rank is null || entry.LeaguePoints is null)
+        var leagueEntries =
+          await _riotClient.TftLeagueV1.GetLeagueEntriesBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode, true));
+
+        var entry = leagueEntries?.FirstOrDefault(x => x.QueueType == "RANKED_TFT");
+
+        if (entry is null)
         {
           continue;
         }
-        
+
         var updated = await _riotAccountsRepository.UpdateRankByIdAsync(account.Id, entry.Tier, entry.Rank, entry.LeaguePoints, null);
 
         if (!updated)
