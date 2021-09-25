@@ -36,9 +36,9 @@ WHERE [AccountId] = @accountId AND [FullMatchId] IN @matches;";
     public async Task<bool> InsertFromDto(long accountId, string fullMatchId, MatchV5Dto match, MatchParticipantV5Dto participant)
     {
       const string query = @"INSERT INTO [LolMatches] ([FullMatchId], [MatchId], [ServerApiCode], [AccountId],
-[Timestamp], [Result], [ChampionId], [KDA], [GameDuration], [ControlWardsBought]
+[Timestamp], [Result], [ChampionId], [KDA], [GameDuration], [ControlWardsBought])
 VALUES (@fullMatchId, @matchId, @serverApiCode, @accountId, @timestamp,
-@result, @championId, @kda, @gameDuration, @controlWardsBought));";
+@result, @championId, @kda, @gameDuration, @controlWardsBought);";
 
       using var connection = await CreateConnectionAsync();
 
