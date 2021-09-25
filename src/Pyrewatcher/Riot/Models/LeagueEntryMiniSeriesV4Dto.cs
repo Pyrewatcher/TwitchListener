@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Pyrewatcher.Models
+namespace Pyrewatcher.Riot.Models
 {
   public class LeagueEntryMiniSeriesV4Dto
   {
