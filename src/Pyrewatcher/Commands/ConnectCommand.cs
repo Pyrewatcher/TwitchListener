@@ -23,19 +23,21 @@ namespace Pyrewatcher.Commands
     private readonly ILogger<ConnectCommand> _logger;
 
     private readonly IBroadcastersRepository _broadcastersRepository;
+    private readonly IUsersRepository _usersRepository;
 
     private readonly CommandHelpers _commandHelpers;
-    private readonly DatabaseHelpers _databaseHelpers;
+    private readonly TwitchApiHelper _twitchApiHelper;
 
     public ConnectCommand(TwitchClient client, IConfiguration config, ILogger<ConnectCommand> logger, IBroadcastersRepository broadcastersRepository,
-                          CommandHelpers commandHelpers, DatabaseHelpers databaseHelpers)
+                          IUsersRepository usersRepository, CommandHelpers commandHelpers, TwitchApiHelper twitchApiHelper)
     {
       _client = client;
       _config = config;
       _logger = logger;
       _broadcastersRepository = broadcastersRepository;
+      _usersRepository = usersRepository;
       _commandHelpers = commandHelpers;
-      _databaseHelpers = databaseHelpers;
+      _twitchApiHelper = twitchApiHelper;
     }
 
     private ConnectCommandArguments ParseAndValidateArguments(List<string> argsList)
@@ -62,14 +64,43 @@ namespace Pyrewatcher.Commands
       }
 
       // get broadcaster
-      var broadcaster = await _databaseHelpers.GetBroadcaster(args.Channel);
+      var broadcaster = await _broadcastersRepository.GetByNameAsync(args.Channel);
 
-      // check if retrieved
-      if (broadcaster == null)
+      if (broadcaster is null)
       {
-        _logger.LogInformation("Broadcaster {broadcaster} couldn't be retrieved - returning", args.Channel);
+        var user = await _usersRepository.GetUserByName(args.Channel);
 
-        return false;
+        if (user is null)
+        {
+          user = await _twitchApiHelper.GetUserByName(args.Channel);
+
+          if (user.Id is 0 or -1)
+          {
+            _logger.LogInformation("Broadcaster {broadcaster} couldn't be retrieved - returning", args.Channel);
+
+            return false;
+          }
+
+          var userInserted = await _usersRepository.InsertUser(user);
+
+          if (!userInserted)
+          {
+            // TODO: Message failure
+            return false;
+          }
+        }
+
+        var broadcasterInserted = await _broadcastersRepository.InsertAsync(user.Id);
+
+        if (broadcasterInserted)
+        {
+          broadcaster = await _broadcastersRepository.GetByNameAsync(args.Channel);
+        }
+        else
+        {
+          // TODO: Message failure
+          return false;
+        }
       }
 
       // check if already connected

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.Helpers;
 using Pyrewatcher.Models;
 using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Interfaces;
+using Pyrewatcher.Riot.Utilities;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -35,17 +35,15 @@ namespace Pyrewatcher.Commands
     private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly IRiotAccountsRepository _riotAccountsRepository;
     
-    private readonly Utilities _utilities;
     private readonly IRiotClient _riotClient;
 
     public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, IBroadcastersRepository broadcastersRepository,
-                          IRiotAccountsRepository riotAccountsRepository, Utilities utilities, IRiotClient riotClient)
+                          IRiotAccountsRepository riotAccountsRepository, IRiotClient riotClient)
     {
       _client = client;
       _logger = logger;
       _broadcastersRepository = broadcastersRepository;
       _riotAccountsRepository = riotAccountsRepository;
-      _utilities = utilities;
       _riotClient = riotClient;
     }
 
@@ -277,7 +275,7 @@ namespace Pyrewatcher.Commands
         case "add": // \account add <Game> <Server> <SummonerName>
         {
           // check if game abbreviation exists
-          if (_utilities.GetGameFullName(args.Game.ToLower()) is null)
+          if (args.Game.ToGameEnum() is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidGame"], message.DisplayName, args.Game));
             _logger.LogInformation("Game {game} doesn't exist in the database - returning", args.Game);
@@ -286,9 +284,9 @@ namespace Pyrewatcher.Commands
           }
 
           // check if server exists
-          var serverApiCode = _utilities.GetServerApiCode(args.Server.ToUpper());
+          var isServerValid = Enum.TryParse<Server>(args.Server, true, out _);
 
-          if (serverApiCode is null)
+          if (!isServerValid)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidServer"], message.DisplayName, args.Server));
             _logger.LogInformation("Server {server} doesn't exist in the database - returning", args.Server);
