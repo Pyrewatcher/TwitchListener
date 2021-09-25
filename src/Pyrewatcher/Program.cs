@@ -82,7 +82,6 @@ namespace Pyrewatcher
                     services.AddSingleton<CyclicTasksHandler>();
 
                     services.AddSingleton<CommandHelpers>();
-                    services.AddSingleton<DatabaseHelpers>();
                     services.AddSingleton<TwitchApiHelper>();
                     services.AddSingleton<RiotTftApiHelper>();
                     services.AddSingleton<Utilities>();
