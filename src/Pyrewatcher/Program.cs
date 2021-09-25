@@ -93,6 +93,7 @@ namespace Pyrewatcher
                     services.AddSingleton<IMatchV5Client, MatchV5Client>();
                     services.AddSingleton<ISpectatorV4Client, SpectatorV4Client>();
                     services.AddSingleton<ISummonerV4Client, SummonerV4Client>();
+                    services.AddSingleton<ITftMatchV1Client, TftMatchV1Client>();
                     services.AddSingleton<ITftSummonerV1Client, TftSummonerV1Client>();
 
                     services.AddSingleton<TwitchClient>();

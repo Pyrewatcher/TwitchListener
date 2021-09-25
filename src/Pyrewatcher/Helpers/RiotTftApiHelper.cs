@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -66,95 +65,6 @@ namespace Pyrewatcher.Helpers
         }
 
         i++;
-      }
-
-      return output;
-    }
-
-    public async Task<List<List<string>>> MatchGetMatchlistsByRiotAccountsList(List<RiotAccount> accountsList)
-    {
-      var tasks = new List<Task<HttpResponseMessage>>();
-
-      foreach (var account in accountsList)
-      {
-        var routingValue = _utilities.GetTftRoutingValue(account.ServerCode);
-        tasks.Add(ApiClient.GetAsync($"https://{routingValue}.api.riotgames.com/tft/match/v1/matches/by-puuid/{account.Puuid}/ids?count=10"));
-      }
-
-      var responses = await Task.WhenAll(tasks);
-
-      var output = new List<List<string>>();
-
-      var i = 0;
-
-      foreach (var response in responses)
-      {
-        //Console.WriteLine("Riot TFT API call");
-        if (response.IsSuccessStatusCode)
-        {
-          var responseContent = await response.Content.ReadAsAsync<List<string>>();
-
-          output.Add(responseContent ?? new List<string>());
-        }
-        else
-        {
-          output.Add(new List<string>());
-        }
-
-        i++;
-      }
-
-      return output;
-    }
-
-    public async Task<List<TftMatchDto>> MatchGetByMatchesList(List<TftMatch> matchesList)
-    {
-      var toGet = new List<TftMatch>(matchesList);
-      var output = new List<TftMatchDto>();
-
-      while (toGet.Count > 0)
-      {
-        var tasks = new List<Task<HttpResponseMessage>>();
-
-        var toRemove = new List<TftMatch>();
-
-        foreach (var match in toGet)
-        {
-          if (tasks.Count >= 10)
-          {
-            break;
-          }
-
-          var routingValue = _utilities.GetTftRoutingValue(match.MatchId[..match.MatchId.IndexOf('_')]);
-          tasks.Add(ApiClient.GetAsync($"https://{routingValue}.api.riotgames.com/tft/match/v1/matches/{match.MatchId}"));
-          toRemove.Add(match);
-        }
-
-        var responses = await Task.WhenAll(tasks);
-
-        for (var i = 0; i < responses.Length; i++)
-        {
-          //Console.WriteLine("Riot TFT API call");
-          if (responses[i].IsSuccessStatusCode)
-          {
-            var responseContent = await responses[i].Content.ReadAsAsync<TftMatchDto>();
-
-            output.Add(responseContent ?? new TftMatchDto {Metadata = new MetadataDto {Match_Id = toGet[i].MatchId}});
-          }
-          else
-          {
-            output.Add(new TftMatchDto {Metadata = new MetadataDto {Match_Id = toGet[i].MatchId}});
-          }
-        }
-
-        foreach (var match in toRemove)
-        {
-          toGet.Remove(match);
-        }
-
-        toRemove.Clear();
-
-        await Task.Delay(TimeSpan.FromSeconds(2));
       }
 
       return output;

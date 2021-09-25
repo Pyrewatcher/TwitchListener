@@ -1,8 +1,11 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.Riot.Models;
 
 namespace Pyrewatcher.DataAccess
 {
@@ -14,23 +17,39 @@ namespace Pyrewatcher.DataAccess
     }
 
     public TftMatchRepository(IConfiguration config, ILogger<Repository<TftMatch>> logger) : base(config, logger) { }
+    
 
-    public async Task<int> InsertRangeIfNotExistsAsync(IEnumerable<TftMatch> list)
+    public async Task<IEnumerable<string>> GetMatchesNotInDatabase(List<string> matches, long accountId)
     {
-      var inserted = 0;
+      const string query = @"SELECT [MatchId]
+FROM [TftMatches]
+WHERE [AccountId] = @accountId AND [MatchId] IN @matches;";
 
-      foreach (var tftMatch in list)
+      using var connection = CreateConnection();
+
+      var result = (await connection.QueryAsync<string>(query, new {accountId, matches})).ToList();
+
+      var notInDatabase = matches.Where(x => !result.Contains(x));
+
+      return notInDatabase;
+    }
+
+    public async Task<bool> InsertFromDto(long accountId, string matchId, TftMatchV1Dto match, TftMatchParticipantV1Dto participant)
+    {
+      const string query = @"INSERT INTO [TftMatches] ([MatchId], [AccountId], [Timestamp], [Place])
+VALUES (@matchId, @accountId, @timestamp, @place);";
+
+      using var connection = CreateConnection();
+
+      var rows = await connection.ExecuteAsync(query, new
       {
-        if (await FindAsync("MatchId = @MatchId AND AccountId = @AccountId", tftMatch) != null)
-        {
-          continue;
-        }
+        matchId,
+        accountId,
+        timestamp = match.Info.Timestamp,
+        place = participant.Place
+      });
 
-        await InsertAsync(tftMatch);
-        inserted++;
-      }
-
-      return inserted;
+      return rows == 1;
     }
   }
 }

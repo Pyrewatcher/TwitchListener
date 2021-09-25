@@ -172,52 +172,37 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var matchlists = await _riotTftApiHelper.MatchGetMatchlistsByRiotAccountsList(accounts);
+      var matchesToRequest = new List<(RiotAccount, string)>();
 
-      var zippedList = accounts.Zip(matchlists).ToList();
-
-      foreach ((var account, var matchlist) in zippedList)
+      foreach (var account in accounts)
       {
-        if (matchlist.Any())
+        var matches = await _riotClient.TftMatchV1.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, 10); // TODO: Set routing value depending on server
+
+        if (matches is null)
         {
-          var matches = matchlist.Select(x => new TftMatch {AccountId = account.Id, MatchId = x}).ToList();
-          await _tftMatchesRepository.InsertRangeIfNotExistsAsync(matches);
+          continue;
         }
+
+        var matchesNotInDatabase = await _tftMatchesRepository.GetMatchesNotInDatabase(matches.ToList(), account.Id);
+        matchesToRequest.AddRange(matchesNotInDatabase.Select(x => (account, x)));
       }
 
-      var matchesToUpdate = (await _tftMatchesRepository.FindRangeAsync("Place = @Place", new TftMatch {Place = 0})).ToList();
-
-      if (matchesToUpdate.Any())
+      foreach ((var account, var matchId) in matchesToRequest)
       {
-        var matchDataList = await _riotTftApiHelper.MatchGetByMatchesList(matchesToUpdate);
+        var match = await _riotClient.TftMatchV1.GetMatchById(matchId, RoutingValue.Europe); // TODO: Set routing value depending on server
 
-        var zippedMatchList = matchesToUpdate.Zip(matchDataList).ToList();
-
-        foreach ((var match, var matchData) in zippedMatchList)
+        if (match is null)
         {
-          if (matchData.Info is null)
-          {
-            continue;
-          }
+          continue;
+        }
 
-          var account = accounts.Find(x => x.Id == matchesToUpdate.Find(y => y.MatchId == matchData.Metadata.Match_Id).AccountId);
+        var participant = match.Info.Players.First(x => x.Puuid == account.Puuid);
 
-          if (account is null)
-          {
-            continue;
-          }
+        var inserted = await _tftMatchesRepository.InsertFromDto(account.Id, matchId, match, participant);
 
-          var participant = matchData.Info.Participants.Find(x => x.Puuid == account.Puuid);
-
-          if (participant is null)
-          {
-            continue;
-          }
-
-          match.Timestamp = matchData.Info.Game_Datetime;
-          match.Place = participant.Placement;
-
-          await _tftMatchesRepository.UpdateAsync(match);
+        if (!inserted)
+        {
+          // TODO: Log failure
         }
       }
     }

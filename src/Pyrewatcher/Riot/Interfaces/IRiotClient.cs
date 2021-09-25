@@ -6,6 +6,7 @@
     public IMatchV5Client MatchV5 { get; }
     public ISpectatorV4Client SpectatorV4 { get; }
     public ISummonerV4Client SummonerV4 { get; }
+    public ITftMatchV1Client TftMatchV1 { get; }
     public ITftSummonerV1Client TftSummonerV1 { get; }
   }
 }
