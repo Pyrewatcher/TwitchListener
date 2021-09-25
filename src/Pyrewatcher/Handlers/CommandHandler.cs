@@ -16,31 +16,32 @@ namespace Pyrewatcher.Handlers
 {
   public class CommandHandler
   {
-    private readonly IAliasesRepository _aliases;
-    private readonly IDictionary<string, ICommand> _commandClasses;
-    private readonly CommandHelpers _commandHelpers;
-    private readonly CommandRepository _commands;
-    private readonly IHost _host;
-    private readonly ILatestCommandExecutionsRepository _latestCommandExecutions;
     private readonly ILogger<CommandHandler> _logger;
-    private readonly TemplateCommandHandler _templateCommandHandler;
-    private readonly UserRepository _users;
 
-    public CommandHandler(IHost host, ILogger<CommandHandler> logger, TemplateCommandHandler templateCommandHandler, IAliasesRepository aliases,
-                          CommandRepository commands, CommandHelpers commandHelpers, UserRepository users,
-                          ILatestCommandExecutionsRepository latestCommandExecutions)
+    private readonly IAliasesRepository _aliasesRepository;
+    private readonly ICommandsRepository _commandsRepository;
+    private readonly ILatestCommandExecutionsRepository _latestCommandExecutionsRepository;
+    private readonly UserRepository _usersRepository;
+
+    private readonly CommandHelpers _commandHelpers;
+    private readonly TemplateCommandHandler _templateCommandHandler;
+
+    private readonly IDictionary<string, ICommand> _commandClasses;
+
+    public CommandHandler(IHost host, ILogger<CommandHandler> logger, IAliasesRepository aliasesRepository, ICommandsRepository commandsRepository,
+                          ILatestCommandExecutionsRepository latestCommandExecutionsRepository, UserRepository usersRepository,
+                          CommandHelpers commandHelpers, TemplateCommandHandler templateCommandHandler)
     {
-      _host = host;
       _logger = logger;
-      _templateCommandHandler = templateCommandHandler;
-      _aliases = aliases;
-      _commands = commands;
+      _aliasesRepository = aliasesRepository;
+      _commandsRepository = commandsRepository;
+      _latestCommandExecutionsRepository = latestCommandExecutionsRepository;
+      _usersRepository = usersRepository;
       _commandHelpers = commandHelpers;
-      _users = users;
-      _latestCommandExecutions = latestCommandExecutions;
+      _templateCommandHandler = templateCommandHandler;
 
       _commandClasses = Globals.CommandTypes.ToDictionary(x => x.Name.Remove(x.Name.Length - 7).TrimStart('_').ToLower(),
-                                                          x => (ICommand) _host.Services.GetService(x));
+                                                          x => (ICommand) host.Services.GetService(x));
     }
 
     public async Task HandleCommand(ChatCommand command)
@@ -55,7 +56,7 @@ namespace Pyrewatcher.Handlers
       var sw = Stopwatch.StartNew();
 
       // Check if command is a valid alias for the broadcaster
-      var aliasCommand = await _aliases.GetAliasCommandWithNameByBroadcasterIdAsync(commandText, broadcasterId);
+      var aliasCommand = await _aliasesRepository.GetAliasCommandWithNameByBroadcasterIdAsync(commandText, broadcasterId);
 
       if (aliasCommand is not null)
       {
@@ -74,10 +75,9 @@ namespace Pyrewatcher.Handlers
       }
 
       // Check if command is available for the broadcaster
-      var commandData = await _commands.FindAsync("Name = @Name AND (Channel = '' OR Channel = @Channel)",
-                                                  new Command {Name = commandText, Channel = chatMessage.Channel});
+      var commandData = await _commandsRepository.GetCommandForChannelByName(commandText, chatMessage.Channel);
 
-      if (commandData == null)
+      if (commandData is null)
       {
         _logger.LogInformation("There is no command with name \"{name}\" available for broadcaster \"{broadcaster}\" - returning", commandText,
                                chatMessage.Channel);
@@ -91,19 +91,19 @@ namespace Pyrewatcher.Handlers
 
       var userId = long.Parse(chatMessage.UserId);
       // Add sender if sender doesn't exist in the database, update if does
-      var sender = await _users.FindAsync("Id = @Id", new User {Id = userId});
+      var sender = await _usersRepository.FindAsync("Id = @Id", new User {Id = userId});
 
       if (sender == null)
       {
         sender = new User {Name = chatMessage.Username, DisplayName = chatMessage.DisplayName, Id = userId};
-        await _users.InsertAsync(sender);
+        await _usersRepository.InsertAsync(sender);
         //_logger.LogInformation("User {user} inserted to the database", commandDeserialized["display-name"]);
       }
       else
       {
         sender.DisplayName = chatMessage.DisplayName;
         sender.Name = chatMessage.Username;
-        await _users.UpdateAsync(sender);
+        await _usersRepository.UpdateAsync(sender);
       }
 
       // Check if sender is permitted to use the command - return if not
@@ -115,7 +115,7 @@ namespace Pyrewatcher.Handlers
       }
 
       // Check if command is on cooldown - skip if sender is administrator, return if not and if command is on cooldown
-      var latestExecution = await _latestCommandExecutions.GetLatestExecutionAsync(broadcasterId, commandData.Id);
+      var latestExecution = await _latestCommandExecutionsRepository.GetLatestExecutionAsync(broadcasterId, commandData.Id);
 
       if (!sender.IsAdministrator)
       {
@@ -164,11 +164,16 @@ namespace Pyrewatcher.Handlers
       }
 
       // Update command and latest execution
-      await _commands.UpdateAsync(commandData);
+      var incremented = await _commandsRepository.IncrementUsageCountById(commandData.Id);
+
+      if (!incremented)
+      {
+        // TODO: Log failure
+      }
 
       if (latestExecution == null)
       {
-        var inserted = await _latestCommandExecutions.InsertLatestExecution(broadcasterId, commandData.Id, DateTime.UtcNow);
+        var inserted = await _latestCommandExecutionsRepository.InsertLatestExecution(broadcasterId, commandData.Id, DateTime.UtcNow);
 
         if (!inserted)
         {
@@ -177,7 +182,7 @@ namespace Pyrewatcher.Handlers
       }
       else
       {
-        var updated = await _latestCommandExecutions.UpdateLatestExecution(broadcasterId, commandData.Id, DateTime.UtcNow);
+        var updated = await _latestCommandExecutionsRepository.UpdateLatestExecution(broadcasterId, commandData.Id, DateTime.UtcNow);
 
         if (!updated)
         {

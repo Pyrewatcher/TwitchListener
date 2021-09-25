@@ -1,10 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Pyrewatcher.DataAccess;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.DataAccess.Interfaces;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -15,9 +13,9 @@ namespace Pyrewatcher.Commands
   {
     private readonly TwitchClient _client;
 
-    private readonly CommandRepository _commandsRepository;
+    private readonly ICommandsRepository _commandsRepository;
 
-    public HelpCommand(TwitchClient client, CommandRepository commandsRepository)
+    public HelpCommand(TwitchClient client, ICommandsRepository commandsRepository)
     {
       _client = client;
       _commandsRepository = commandsRepository;
@@ -25,30 +23,12 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var commands = (await _commandsRepository.FindRangeAsync("(Channel = '' OR Channel = @Channel) AND IsPublic = 1 AND Name != 'help'",
-                                                     new Command {Channel = message.Channel})).Select(x => x.Name)
-                                                                                              .OrderBy(x => x)
-                                                                                              .ToList();
+      var commands = (await _commandsRepository.GetCommandNamesForHelp(message.Channel)).ToList();
 
-      if (commands.Count == 0)
-      {
-        _client.SendMessage(message.Channel, Globals.Locale["help_response_empty"]);
-      }
-      else
-      {
-        var sb = new StringBuilder();
-
-        foreach (var command in commands)
-        {
-          sb.Append('\\');
-          sb.Append(command);
-          sb.Append(", ");
-        }
-
-        sb.Remove(sb.Length - 2, 2);
-
-        _client.SendMessage(message.Channel, string.Format(Globals.Locale["help_response"], sb));
-      }
+      _client.SendMessage(message.Channel,
+                          commands.Any()
+                            ? string.Format(Globals.Locale["help_response"], string.Join(", ", commands))
+                            : Globals.Locale["help_response_empty"]);
 
       return true;
     }

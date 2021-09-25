@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using TwitchLib.Client;
@@ -27,10 +26,10 @@ namespace Pyrewatcher.Commands
 
     private readonly IAliasesRepository _aliasesRepository;
     private readonly IBroadcastersRepository _broadcastersRepository;
-    private readonly CommandRepository _commandsRepository;
+    private readonly ICommandsRepository _commandsRepository;
 
     public AliasCommand(TwitchClient client, ILogger<AliasCommand> logger, IAliasesRepository aliasesRepository,
-                        IBroadcastersRepository broadcastersRepository, CommandRepository commandsRepository)
+                        IBroadcastersRepository broadcastersRepository, ICommandsRepository commandsRepository)
     {
       _client = client;
       _logger = logger;
@@ -234,8 +233,7 @@ namespace Pyrewatcher.Commands
           // if alias does not start with '!', check commands as well
           if (!args.Alias.StartsWith('!'))
           {
-            if (await _commandsRepository.FindAsync("Name = @Name AND (Channel = '' OR Channel = @Channel)",
-                                          new Command {Name = args.Alias, Channel = broadcaster.Name}) != null)
+            if (await _commandsRepository.ExistsForChannelByName(args.Alias, broadcaster.Name))
             {
               _logger.LogInformation("A command with name \"{name}\" already exists and is available for broadcaster \"{broadcaster}\" - returning",
                                      args.Alias, broadcaster.DisplayName);
@@ -271,7 +269,7 @@ namespace Pyrewatcher.Commands
           // if alias does not start with '!', check commands as well
           if (!args.Alias.StartsWith('!'))
           {
-            if (await _commandsRepository.FindAsync("Name = @Name", new Command {Name = args.Alias}) != null)
+            if (await _commandsRepository.ExistsAnyByName(args.Alias))
             {
               _logger.LogInformation("A command with name \"{name}\" already exists in the database - returning", args.Alias);
 

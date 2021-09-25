@@ -2,8 +2,7 @@
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.DataAccess.Interfaces;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -20,9 +19,9 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly ILogger<UsageCommand> _logger;
 
-    private readonly CommandRepository _commandsRepository;
+    private readonly ICommandsRepository _commandsRepository;
 
-    public UsageCommand(TwitchClient client, ILogger<UsageCommand> logger, CommandRepository commandsRepository)
+    public UsageCommand(TwitchClient client, ILogger<UsageCommand> logger, ICommandsRepository commandsRepository)
     {
       _client = client;
       _logger = logger;
@@ -51,10 +50,10 @@ namespace Pyrewatcher.Commands
       {
         return false;
       }
+      
+      var command = await _commandsRepository.GetCommandByName(args.Command);
 
-      var command = await _commandsRepository.FindAsync("Name = @Name", new Command {Name = args.Command});
-
-      if (command == null)
+      if (command is null)
       {
         _logger.LogInformation("Command {command} does not exist - returning", args.Command);
 

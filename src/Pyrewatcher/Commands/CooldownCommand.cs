@@ -2,8 +2,7 @@
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using Pyrewatcher.DataAccess;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.DataAccess.Interfaces;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -21,9 +20,9 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
     private readonly ILogger<CooldownCommand> _logger;
 
-    private readonly CommandRepository _commandsRepository;
+    private readonly ICommandsRepository _commandsRepository;
 
-    public CooldownCommand(TwitchClient client, ILogger<CooldownCommand> logger, CommandRepository commandsRepository)
+    public CooldownCommand(TwitchClient client, ILogger<CooldownCommand> logger, ICommandsRepository commandsRepository)
     {
       _client = client;
       _logger = logger;
@@ -71,10 +70,10 @@ namespace Pyrewatcher.Commands
       {
         return false;
       }
+      
+      var command = await _commandsRepository.GetCommandByName(args.Command);
 
-      var command = await _commandsRepository.FindAsync("Name = @Name", new Command {Name = args.Command.ToLower()});
-
-      if (command == null)
+      if (command is null)
       {
         _logger.LogInformation("There is no command with name {name} - returning", args.Command);
 
@@ -91,10 +90,17 @@ namespace Pyrewatcher.Commands
       if (args.NewValue != null) // set command cooldown to the new value
       {
         var oldValue = command.Cooldown;
-        command.Cooldown = args.NewValue.Value;
-        await _commandsRepository.UpdateAsync(command);
-        _client.SendMessage(message.Channel,
-                            string.Format(Globals.Locale["cooldown_changed"], message.DisplayName, command.Name, oldValue, command.Cooldown));
+        var updated = await _commandsRepository.UpdateCooldownById(command.Id, args.NewValue.Value);
+
+        if (updated)
+        {
+          _client.SendMessage(message.Channel,
+                              string.Format(Globals.Locale["cooldown_changed"], message.DisplayName, command.Name, oldValue, args.NewValue.Value));
+        }
+        else
+        {
+          // TODO: Message failure
+        }
       }
       else // lookup command cooldown
       {

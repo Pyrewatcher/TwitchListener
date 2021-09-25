@@ -129,6 +129,7 @@ namespace Pyrewatcher
                                                   .Where(x => x.Name != "AliasesRepository")
                                                   .Where(x => x.Name != "BansRepository")
                                                   .Where(x => x.Name != "BroadcastersRepository")
+                                                  .Where(x => x.Name != "CommandsRepository")
                                                   .Where(x => x.Name != "CommandVariablesRepository")
                                                   .Where(x => x.Name != "LatestCommandExecutionsRepository")
                                                   .Where(x => x.Name != "LocalizationRepository")
@@ -150,6 +151,7 @@ namespace Pyrewatcher
                     services.AddTransient<IAliasesRepository, AliasesRepository>();
                     services.AddTransient<IBansRepository, BansRepository>();
                     services.AddTransient<IBroadcastersRepository, BroadcastersRepository>();
+                    services.AddTransient<ICommandsRepository, CommandsRepository>();
                     services.AddTransient<ICommandVariablesRepository, CommandVariablesRepository>();
                     services.AddTransient<ILocalizationRepository, LocalizationRepository>();
                     services.AddTransient<ILatestCommandExecutionsRepository, LatestCommandExecutionsRepository>();
