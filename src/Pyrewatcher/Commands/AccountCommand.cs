@@ -10,7 +10,6 @@ using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
 using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Interfaces;
-using Pyrewatcher.Riot.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -35,20 +34,17 @@ namespace Pyrewatcher.Commands
 
     private readonly IBroadcastersRepository _broadcastersRepository;
     private readonly IRiotAccountsRepository _riotAccountsRepository;
-
-    private readonly RiotTftApiHelper _riotTftApiHelper;
+    
     private readonly Utilities _utilities;
     private readonly IRiotClient _riotClient;
 
     public AccountCommand(TwitchClient client, ILogger<AccountCommand> logger, IBroadcastersRepository broadcastersRepository,
-                          IRiotAccountsRepository riotAccountsRepository, RiotTftApiHelper riotTftApiHelper, Utilities utilities,
-                          IRiotClient riotClient)
+                          IRiotAccountsRepository riotAccountsRepository, Utilities utilities, IRiotClient riotClient)
     {
       _client = client;
       _logger = logger;
       _broadcastersRepository = broadcastersRepository;
       _riotAccountsRepository = riotAccountsRepository;
-      _riotTftApiHelper = riotTftApiHelper;
       _utilities = utilities;
       _riotClient = riotClient;
     }
@@ -188,7 +184,6 @@ namespace Pyrewatcher.Commands
       List<RiotAccount> accountsList;
       Broadcaster broadcaster;
       RiotAccount account;
-      SummonerV4Dto data;
 
       switch (args.Action)
       {
@@ -314,23 +309,32 @@ namespace Pyrewatcher.Commands
             return false;
           }
 
-          // get data about the account from Riot Summoner API
-          data = args.Game.ToLower() switch
+          // get data about the account from Riot API
+          switch (args.Game.ToLower())
           {
-            "lol" => await _riotClient.SummonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true)),
-            "tft" => await _riotTftApiHelper.SummonerGetByName(args.SummonerName, serverApiCode),
-            _ => null
-          };
+            case "lol":
+              var lolData = await _riotClient.SummonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true));
+              account = lolData is null
+                ? null
+                : new RiotAccount(broadcaster.Id, args.Game, lolData.Name, args.Server, lolData.SummonerId, lolData.AccountId, lolData.Puuid);
 
-          if (data is null)
+              break;
+            case "tft":
+              var tftData = await _riotClient.TftSummonerV1.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true));
+              account = tftData is null
+                ? null
+                : new RiotAccount(broadcaster.Id, args.Game, tftData.Name, args.Server, tftData.SummonerId, tftData.AccountId, tftData.Puuid);
+
+              break;
+          }
+
+          if (account is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountLoadingFailed"], message.DisplayName));
             _logger.LogInformation("Loading account data failed - returning");
 
             return false;
           }
-
-          account = new RiotAccount(broadcaster.Id, args.Game, data.Name, args.Server, data.SummonerId, data.AccountId, data.Puuid);
 
           await _riotAccountsRepository.InsertAccount(account);
           
@@ -445,29 +449,37 @@ namespace Pyrewatcher.Commands
             return false;
           }
 
-          data = account.GameAbbreviation.ToLower() switch
+          string requestedSummonerName = null;
+          // get data about the account from Riot API
+          switch (account.GameAbbreviation.ToLower())
           {
-            "lol" => await _riotClient.SummonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true)),
-            "tft" => await _riotTftApiHelper.SummonerGetByAccountId(account.AccountId, _utilities.GetServerApiCode(account.ServerCode)),
-            _ => null
-          };
+            case "lol":
+              var lolData = await _riotClient.SummonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true));
+              requestedSummonerName = lolData?.Name;
 
-          if (data is null)
+              break;
+            case "tft":
+              var tftData = await _riotClient.TftSummonerV1.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true));
+              requestedSummonerName = tftData?.Name;
+
+              break;
+          }
+
+          if (requestedSummonerName is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountLoadingFailed"], message.DisplayName));
             _logger.LogInformation("Loading account data failed - returning");
 
             return false;
           }
-
-          if (data.Name != account.SummonerName)
+          else if (requestedSummonerName != account.SummonerName)
           {
-            var updated = await _riotAccountsRepository.UpdateSummonerNameByIdAsync(args.AccountId, data.Name);
+            var updated = await _riotAccountsRepository.UpdateSummonerNameByIdAsync(args.AccountId, requestedSummonerName);
 
             if (updated)
             {
               _client.SendMessage(message.Channel,
-                                  string.Format(Globals.Locale["account_update_updated"], message.DisplayName, account.SummonerName, data.Name));
+                                  string.Format(Globals.Locale["account_update_updated"], message.DisplayName, account.SummonerName, requestedSummonerName));
             }
             else
             {

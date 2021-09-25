@@ -38,7 +38,7 @@ namespace Pyrewatcher.Commands
 
       foreach (var account in accounts)
       {
-        var match = await _riotClient.SpectatorV4.GetActiveGameBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode));
+        var match = await _riotClient.SpectatorV4.GetActiveGameBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode, true));
 
         if (match is null)
         {

@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
-using Pyrewatcher.Riot.Models;
 
 namespace Pyrewatcher.Helpers
 {
@@ -25,30 +24,6 @@ namespace Pyrewatcher.Helpers
       ApiClient.DefaultRequestHeaders.Accept.Clear();
       ApiClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
       ApiClient.DefaultRequestHeaders.Add("X-Riot-Token", _config.GetSection("ApiKeys")["RiotTft"]);
-    }
-
-    public async Task<SummonerV4Dto> SummonerGetByName(string summonerName, string serverApiCode)
-    {
-      var url = $"https://{serverApiCode}.api.riotgames.com/tft/summoner/v1/summoners/by-name/{summonerName}";
-
-      var response = await ApiClient.GetAsync(url);
-      //Console.WriteLine("Riot TFT API call");
-
-      var output = response.IsSuccessStatusCode ? await response.Content.ReadAsAsync<SummonerV4Dto>() : null;
-
-      return output;
-    }
-
-    public async Task<SummonerV4Dto> SummonerGetByAccountId(string accountId, string serverApiCode)
-    {
-      var url = $"https://{serverApiCode}.api.riotgames.com/tft/summoner/v1/summoners/by-account/{accountId}";
-
-      var response = await ApiClient.GetAsync(url);
-      //Console.WriteLine("Riot TFT API call");
-
-      var output = response.IsSuccessStatusCode ? await response.Content.ReadAsAsync<SummonerV4Dto>() : null;
-
-      return output;
     }
 
     public async Task<List<LeagueEntryDto>> LeagueGetByRiotAccountsList(List<RiotAccount> accountsList)
