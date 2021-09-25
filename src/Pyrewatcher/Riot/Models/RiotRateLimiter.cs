@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Pyrewatcher.Riot.Enums;
 
-namespace Pyrewatcher.Riot.Services
+namespace Pyrewatcher.Riot.Models
 {
   public class RiotRateLimiter
   {

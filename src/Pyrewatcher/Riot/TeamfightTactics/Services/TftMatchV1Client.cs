@@ -3,11 +3,12 @@ using System.Threading.Tasks;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.Riot.Enums;
-using Pyrewatcher.Riot.Interfaces;
 using Pyrewatcher.Riot.Models;
+using Pyrewatcher.Riot.TeamfightTactics.Interfaces;
+using Pyrewatcher.Riot.TeamfightTactics.Models;
 using Pyrewatcher.Riot.Utilities;
 
-namespace Pyrewatcher.Riot.Services
+namespace Pyrewatcher.Riot.TeamfightTactics.Services
 {
   public class TftMatchV1Client : ITftMatchV1Client
   {

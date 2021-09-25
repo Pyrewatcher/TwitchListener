@@ -1,4 +1,6 @@
 ﻿using Pyrewatcher.Riot.Interfaces;
+using Pyrewatcher.Riot.LeagueOfLegends.Interfaces;
+using Pyrewatcher.Riot.TeamfightTactics.Interfaces;
 
 namespace Pyrewatcher.Riot.Services
 {

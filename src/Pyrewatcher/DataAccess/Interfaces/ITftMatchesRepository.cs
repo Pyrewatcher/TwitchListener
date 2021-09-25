@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Pyrewatcher.Models;
-using Pyrewatcher.Riot.Models;
+using Pyrewatcher.Riot.TeamfightTactics.Models;
 
 namespace Pyrewatcher.DataAccess.Interfaces
 {

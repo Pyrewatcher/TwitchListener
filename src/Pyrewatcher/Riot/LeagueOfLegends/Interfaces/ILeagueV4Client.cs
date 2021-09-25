@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Pyrewatcher.Riot.Enums;
-using Pyrewatcher.Riot.Models;
+using Pyrewatcher.Riot.LeagueOfLegends.Models;
 
-namespace Pyrewatcher.Riot.Interfaces
+namespace Pyrewatcher.Riot.LeagueOfLegends.Interfaces
 {
   public interface ILeagueV4Client
   {

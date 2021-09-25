@@ -5,7 +5,7 @@ using Dapper;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Models;
-using Pyrewatcher.Riot.Models;
+using Pyrewatcher.Riot.TeamfightTactics.Models;
 using Pyrewatcher.Riot.Utilities;
 
 namespace Pyrewatcher.DataAccess.Repositories

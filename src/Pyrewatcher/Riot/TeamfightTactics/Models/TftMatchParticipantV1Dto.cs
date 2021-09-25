@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Pyrewatcher.Riot.Models
+namespace Pyrewatcher.Riot.TeamfightTactics.Models
 {
   public class TftMatchParticipantV1Dto
   {

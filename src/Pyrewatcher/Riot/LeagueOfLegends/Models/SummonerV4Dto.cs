@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 
-namespace Pyrewatcher.Riot.Models
+namespace Pyrewatcher.Riot.LeagueOfLegends.Models
 {
-  public class TftSummonerV1Dto
+  public class SummonerV4Dto
   {
     [JsonProperty("accountId")]
     public string AccountId { get; set; }

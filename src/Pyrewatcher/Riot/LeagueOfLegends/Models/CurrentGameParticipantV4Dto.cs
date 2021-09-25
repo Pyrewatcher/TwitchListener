@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Pyrewatcher.Riot.Models
+namespace Pyrewatcher.Riot.LeagueOfLegends.Models
 {
   public class CurrentGameParticipantV4Dto
   {

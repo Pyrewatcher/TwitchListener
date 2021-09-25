@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 
-namespace Pyrewatcher.Riot.Models
+namespace Pyrewatcher.Riot.TeamfightTactics.Models
 {
-  public class SummonerV4Dto
+  public class TftSummonerV1Dto
   {
     [JsonProperty("accountId")]
     public string AccountId { get; set; }

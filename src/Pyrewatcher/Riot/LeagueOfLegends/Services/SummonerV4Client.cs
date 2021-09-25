@@ -2,11 +2,12 @@
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.Riot.Enums;
-using Pyrewatcher.Riot.Interfaces;
+using Pyrewatcher.Riot.LeagueOfLegends.Interfaces;
+using Pyrewatcher.Riot.LeagueOfLegends.Models;
 using Pyrewatcher.Riot.Models;
 using Pyrewatcher.Riot.Utilities;
 
-namespace Pyrewatcher.Riot.Services
+namespace Pyrewatcher.Riot.LeagueOfLegends.Services
 {
   public class SummonerV4Client : ISummonerV4Client
   {

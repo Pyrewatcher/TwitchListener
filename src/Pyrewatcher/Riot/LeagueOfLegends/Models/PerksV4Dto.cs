@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Pyrewatcher.Riot.Models
+namespace Pyrewatcher.Riot.LeagueOfLegends.Models
 {
   public class PerksV4Dto
   {
