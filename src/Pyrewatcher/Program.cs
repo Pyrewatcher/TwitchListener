@@ -137,6 +137,7 @@ namespace Pyrewatcher
                                                   .Where(x => x.Name != "LolRunesRepository")
                                                   .Where(x => x.Name != "RiotAccountsRepository")
                                                   .Where(x => x.Name != "SubscriptionsRepository")
+                                                  .Where(x => x.Name != "TftMatchesRepository")
                                                   // refactor part end
                                                   .ToList();
 
@@ -157,6 +158,7 @@ namespace Pyrewatcher
                     services.AddTransient<ILolRunesRepository, LolRunesRepository>();
                     services.AddTransient<IRiotAccountsRepository, RiotAccountsRepository>();
                     services.AddTransient<ISubscriptionsRepository, SubscriptionsRepository>();
+                    services.AddTransient<ITftMatchesRepository, TftMatchesRepository>();
                     // refactor part end
 
                     services.AddSingleton<Bot>();

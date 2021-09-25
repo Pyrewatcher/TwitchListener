@@ -65,7 +65,7 @@ VALUES (@fullMatchId, @matchId, @serverApiCode, @accountId, @timestamp,
 
       const string query = @"SELECT [Timestamp], [Result], [ChampionId], [KDA], [ControlWardsBought]
 FROM [LolMatches]
-WHERE [AccountId] = @accountId AND [Timestamp] > @Timestamp AND [GameDuration] >= 330;";
+WHERE [AccountId] = @accountId AND [Timestamp] > @timestamp AND [GameDuration] >= 330;";
 
       using var connection = await CreateConnectionAsync();
 

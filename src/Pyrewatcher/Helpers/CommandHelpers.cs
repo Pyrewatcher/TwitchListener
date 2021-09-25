@@ -20,7 +20,7 @@ namespace Pyrewatcher.Helpers
     private readonly IBansRepository _bansRepository;
     private readonly ILolMatchesRepository _lolMatchesRepository;
     private readonly IRiotAccountsRepository _riotAccountsRepository;
-    private readonly TftMatchRepository _tftMatchesRepository;
+    private readonly ITftMatchesRepository _tftMatchesRepository;
     private readonly UserRepository _usersRepository;
 
     private readonly RiotTftApiHelper _riotTftApiHelper;
@@ -28,7 +28,7 @@ namespace Pyrewatcher.Helpers
     private readonly IRiotClient _riotClient;
 
     public CommandHelpers(IConfiguration config, IBansRepository bansRepository, ILolMatchesRepository lolMatchesRepository,
-                          IRiotAccountsRepository riotAccountsRepository, TftMatchRepository tftMatchesRepository, UserRepository usersRepository,
+                          IRiotAccountsRepository riotAccountsRepository, ITftMatchesRepository tftMatchesRepository, UserRepository usersRepository,
                           RiotTftApiHelper riotTftApiHelper, TwitchApiHelper twitchApiHelper, IRiotClient riotClient)
     {
       _bansRepository = bansRepository;

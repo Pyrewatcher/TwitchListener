@@ -3,10 +3,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Pyrewatcher.DataAccess;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
-using Pyrewatcher.Helpers;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -18,23 +16,17 @@ namespace Pyrewatcher.Commands
     private readonly TwitchClient _client;
 
     private readonly IRiotAccountsRepository _riotAccountsRepository;
-    private readonly TftMatchRepository _tftMatchesRepository;
+    private readonly ITftMatchesRepository _tftMatchesRepository;
 
-    private readonly Utilities _utilities;
-
-    public TftCommand(TwitchClient client, IRiotAccountsRepository riotAccountsRepository, TftMatchRepository tftMatchesRepository,
-                      Utilities utilities)
+    public TftCommand(TwitchClient client, IRiotAccountsRepository riotAccountsRepository, ITftMatchesRepository tftMatchesRepository)
     {
       _client = client;
       _riotAccountsRepository = riotAccountsRepository;
       _tftMatchesRepository = tftMatchesRepository;
-      _utilities = utilities;
     }
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var beginTime = _utilities.GetBeginTime();
-      
       var broadcasterId = long.Parse(message.RoomId);
       var accounts = await _riotAccountsRepository.GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
 
@@ -42,9 +34,8 @@ namespace Pyrewatcher.Commands
 
       foreach (var account in accounts)
       {
-        var matchesList = (await _tftMatchesRepository.FindRangeAsync("AccountId = @AccountId AND Timestamp > @Timestamp",
-                                                            new TftMatch { AccountId = account.Id, Timestamp = beginTime })).ToList();
-        matches.AddRange(matchesList);
+        var accountMatches = await _tftMatchesRepository.GetTodaysMatchesByAccountId(account.Id);
+        matches.AddRange(accountMatches);
       }
 
       if (matches.Any())

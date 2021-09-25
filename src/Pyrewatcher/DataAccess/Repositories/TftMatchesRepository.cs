@@ -3,21 +3,20 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Riot.Models;
+using Pyrewatcher.Riot.Utilities;
 
-namespace Pyrewatcher.DataAccess
+namespace Pyrewatcher.DataAccess.Repositories
 {
-  public class TftMatchRepository : Repository<TftMatch>
+  public class TftMatchesRepository : RepositoryBase, ITftMatchesRepository
   {
-    public override string TableName
+    public TftMatchesRepository(IConfiguration config) : base(config)
     {
-      get => "TftMatches";
+
     }
 
-    public TftMatchRepository(IConfiguration config, ILogger<Repository<TftMatch>> logger) : base(config, logger) { }
-    
 
     public async Task<IEnumerable<string>> GetMatchesNotInDatabase(List<string> matches, long accountId)
     {
@@ -25,9 +24,9 @@ namespace Pyrewatcher.DataAccess
 FROM [TftMatches]
 WHERE [AccountId] = @accountId AND [MatchId] IN @matches;";
 
-      using var connection = CreateConnection();
+      using var connection = await CreateConnectionAsync();
 
-      var result = (await connection.QueryAsync<string>(query, new {accountId, matches})).ToList();
+      var result = (await connection.QueryAsync<string>(query, new { accountId, matches })).ToList();
 
       var notInDatabase = matches.Where(x => !result.Contains(x));
 
@@ -39,7 +38,7 @@ WHERE [AccountId] = @accountId AND [MatchId] IN @matches;";
       const string query = @"INSERT INTO [TftMatches] ([MatchId], [AccountId], [Timestamp], [Place])
 VALUES (@matchId, @accountId, @timestamp, @place);";
 
-      using var connection = CreateConnection();
+      using var connection = await CreateConnectionAsync();
 
       var rows = await connection.ExecuteAsync(query, new
       {
@@ -50,6 +49,21 @@ VALUES (@matchId, @accountId, @timestamp, @place);";
       });
 
       return rows == 1;
+    }
+
+    public async Task<IEnumerable<TftMatch>> GetTodaysMatchesByAccountId(long accountId)
+    {
+      var timestamp = RiotUtilities.GetStartTimeInMilliseconds();
+
+      const string query = @"SELECT [Timestamp], [Place]
+FROM [TftMatches]
+WHERE [AccountId] = @accountId AND [Timestamp] > @timestamp;";
+
+      using var connection = await CreateConnectionAsync();
+
+      var result = await connection.QueryAsync<TftMatch>(query, new {accountId, timestamp});
+
+      return result;
     }
   }
 }
