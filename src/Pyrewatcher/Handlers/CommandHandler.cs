@@ -7,8 +7,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.Commands;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
+using Pyrewatcher.Models;
 using TwitchLib.Client.Models;
 
 namespace Pyrewatcher.Handlers

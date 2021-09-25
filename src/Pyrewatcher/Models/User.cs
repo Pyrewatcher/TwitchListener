@@ -1,4 +1,4 @@
-﻿namespace Pyrewatcher.DatabaseModels
+﻿namespace Pyrewatcher.Models
 {
   public class User
   {

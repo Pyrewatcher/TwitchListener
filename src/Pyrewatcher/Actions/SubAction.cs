@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.Models;
 using TwitchLib.Client;
 
 namespace Pyrewatcher.Actions

@@ -3,7 +3,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
 
 namespace Pyrewatcher.Helpers

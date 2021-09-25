@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 

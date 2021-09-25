@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Models;
 using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Interfaces;

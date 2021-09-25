@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.Models;
 
 namespace Pyrewatcher.DataAccess.Interfaces
 {

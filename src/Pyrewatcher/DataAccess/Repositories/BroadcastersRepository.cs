@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.Models;
 
 namespace Pyrewatcher.DataAccess.Repositories
 {

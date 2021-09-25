@@ -1,6 +1,6 @@
 ﻿using Pyrewatcher.Riot.Utilities;
 
-namespace Pyrewatcher.DatabaseModels
+namespace Pyrewatcher.Models
 {
   public class RiotAccount
   {

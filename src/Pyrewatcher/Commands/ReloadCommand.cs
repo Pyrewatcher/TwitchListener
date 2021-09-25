@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.DatabaseModels;
 using Pyrewatcher.Helpers;
+using Pyrewatcher.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 

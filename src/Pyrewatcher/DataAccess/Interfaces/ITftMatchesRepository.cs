@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using Pyrewatcher.DatabaseModels;
+using Pyrewatcher.Models;
 using Pyrewatcher.Riot.Models;
 
 namespace Pyrewatcher.DataAccess.Interfaces
