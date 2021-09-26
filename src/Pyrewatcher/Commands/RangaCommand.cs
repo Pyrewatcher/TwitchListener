@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Models;
+using Pyrewatcher.Riot.Enums;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
 
@@ -27,7 +28,7 @@ namespace Pyrewatcher.Commands
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccountsRepository.GetActiveAccountsWithRankByBroadcasterIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.NewGetActiveAccountsWithRankByChannelIdAsync(broadcasterId);
 
       if (accounts.Any())
       {
@@ -35,7 +36,7 @@ namespace Pyrewatcher.Commands
 
         foreach (var account in accounts)
         {
-          var displayableAccountBuilder = new StringBuilder(account.DisplayName == "" ? account.ToStringShort() : account.DisplayName);
+          var displayableAccountBuilder = new StringBuilder(account.DisplayName);
           displayableAccountBuilder.Append(": ");
           displayableAccountBuilder.Append(account.DisplayableRank ?? Globals.Locale["ranga_value_unavailable"]);
           displayableAccountBuilder.Append(" ➔ ");
@@ -54,18 +55,13 @@ namespace Pyrewatcher.Commands
       return true;
     }
 
-    private static string GenerateAccountUrl(RiotAccount account)
+    private static string GenerateAccountUrl(NewRiotAccount account)
     {
-      if (account is null)
+      var url = account.Game switch
       {
-        return null;
-      }
-
-      var url = account.GameAbbreviation switch
-      {
-        "lol" => $"https://{account.ServerCode.ToLower()}.op.gg/summoner/userName={account.SummonerName.Replace(" ", "+")}",
-        "tft" => $"https://lolchess.gg/profile/{account.ServerCode.ToLower()}/{account.SummonerName.Replace(" ", "")}",
-        _ => null
+        Game.LeagueOfLegends => $"https://{account.Server.ToString().ToLower()}.op.gg/summoner/userName={account.SummonerName.Replace(" ", "+")}",
+        Game.TeamfightTactics => $"https://lolchess.gg/profile/{account.Server.ToString().ToLower()}/{account.SummonerName.Replace(" ", "")}",
+        _ => ""
       };
 
       return EncodeUrl(url);

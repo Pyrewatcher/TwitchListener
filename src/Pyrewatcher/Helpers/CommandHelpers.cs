@@ -100,8 +100,8 @@ namespace Pyrewatcher.Helpers
       {
         return;
       }
-      
-      var accounts = (await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
+
+      var accounts = (await _riotAccountsRepository.NewGetActiveLolAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -109,35 +109,59 @@ namespace Pyrewatcher.Helpers
         return;
       }
       
-      var matchesToRequest = new List<(RiotAccount, string)>();
+      var matchesToInsert = new List<string>();
+      var matchesToUpdate = new List<(string, NewRiotAccount)>();
 
       foreach (var account in accounts)
       {
-        var matches = await _riotClient.MatchV5.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, RiotUtilities.GetStartTimeInSeconds()); // TODO: Set routing value depending on server
+        var matches = await _riotClient.MatchV5.GetMatchesByPuuid(account.Puuid, account.Server.ToRoutingValue(),
+                                                                  RiotUtilities.GetStartTimeInSeconds());
 
-        if (matches is null)
+        if (matches is null || !matches.Any())
         {
           continue;
         }
 
-        var matchesNotInDatabase = await _lolMatchesRepository.GetMatchesNotInDatabase(matches.ToList(), account.Id);
-        matchesToRequest.AddRange(matchesNotInDatabase.Select(x => (account, x)));
+        var matchesList = matches.ToList();
+
+        var matchesNotInDatabase = (await _lolMatchesRepository.NewGetMatchesNotInDatabase(matchesList)).ToList();
+        var matchesNotUpdated = (await _lolMatchesRepository.NewGetMatchesToUpdateByKey(account.Key, matchesList.Except(matchesNotInDatabase).ToList())).ToList();
+        matchesToInsert.AddRange(matchesNotInDatabase);
+        matchesToUpdate.AddRange(matchesNotInDatabase.Select(x => (x, account)));
+        matchesToUpdate.AddRange(matchesNotUpdated.Select(x => (x, account)));
       }
 
-      foreach ((var account, var matchId) in matchesToRequest)
+      foreach ((var matchId, var account) in matchesToUpdate)
       {
-        var match = await _riotClient.MatchV5.GetMatchById(matchId, RoutingValue.Europe); // TODO: Set routing value depending on server
+        var match = await _riotClient.MatchV5.GetMatchById(matchId, account.Server.ToRoutingValue());
 
         if (match is null)
         {
           continue;
         }
-        
-        var participant = match.Info.Players.First(x => x.Puuid == account.Puuid);
 
-        var inserted = await _lolMatchesRepository.InsertFromDto(account.Id, matchId, match, participant);
+        if (matchesToInsert.Contains(matchId))
+        {
+          var matchInserted = await _lolMatchesRepository.NewInsertMatchFromDto(matchId, match);
 
-        if (!inserted)
+          if (!matchInserted)
+          {
+            // TODO: Log failure
+            continue;
+          }
+        }
+
+        var player = match.Info.Players.FirstOrDefault(x => x.Puuid == account.Puuid);
+
+        if (player is null)
+        {
+          // TODO: Log failure
+          continue;
+        }
+
+        var playerInserted = await _lolMatchesRepository.NewInsertMatchPlayerFromDto(account.Key, matchId, player);
+
+        if (!playerInserted)
         {
           // TODO: Log failure
         }
@@ -160,7 +184,7 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accounts = (await _riotAccountsRepository.GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
+      var accounts = (await _riotAccountsRepository.NewGetActiveTftAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -168,33 +192,56 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var matchesToRequest = new List<(RiotAccount, string)>();
+      var matchesToInsert = new List<string>();
+      var matchesToUpdate = new List<(string, NewRiotAccount)>();
 
       foreach (var account in accounts)
       {
-        var matches = await _riotClient.TftMatchV1.GetMatchesByPuuid(account.Puuid, RoutingValue.Europe, 10); // TODO: Set routing value depending on server
+        var matches = await _riotClient.TftMatchV1.GetMatchesByPuuid(account.Puuid, account.Server.ToRoutingValue(), 10);
 
-        if (matches is null)
+        if (matches is null || !matches.Any())
         {
           continue;
         }
 
-        var matchesNotInDatabase = await _tftMatchesRepository.GetMatchesNotInDatabase(matches.ToList(), account.Id);
-        matchesToRequest.AddRange(matchesNotInDatabase.Select(x => (account, x)));
+        var matchesList = matches.ToList();
+
+        var matchesNotInDatabase = (await _tftMatchesRepository.NewGetMatchesNotInDatabase(matchesList)).ToList();
+        var matchesNotUpdated = (await _tftMatchesRepository.NewGetMatchesToUpdateByKey(account.Key, matchesList.Except(matchesNotInDatabase).ToList())).ToList();
+        matchesToInsert.AddRange(matchesNotInDatabase);
+        matchesToUpdate.AddRange(matchesNotInDatabase.Select(x => (x, account)));
+        matchesToUpdate.AddRange(matchesNotUpdated.Select(x => (x, account)));
       }
 
-      foreach ((var account, var matchId) in matchesToRequest)
+      foreach ((var matchId, var account) in matchesToUpdate)
       {
-        var match = await _riotClient.TftMatchV1.GetMatchById(matchId, RoutingValue.Europe); // TODO: Set routing value depending on server
+        var match = await _riotClient.TftMatchV1.GetMatchById(matchId, account.Server.ToRoutingValue());
 
         if (match is null)
         {
           continue;
         }
 
-        var participant = match.Info.Players.First(x => x.Puuid == account.Puuid);
+        if (matchesToInsert.Contains(matchId))
+        {
+          var matchInserted = await _tftMatchesRepository.NewInsertMatchFromDto(matchId, match);
 
-        var inserted = await _tftMatchesRepository.InsertFromDto(account.Id, matchId, match, participant);
+          if (!matchInserted)
+          {
+            // TODO: Log failure
+            continue;
+          }
+        }
+
+        var player = match.Info.Players.FirstOrDefault(x => x.Puuid == account.Puuid);
+
+        if (player is null)
+        {
+          // TODO: Log failure
+          continue;
+        }
+
+        var inserted = await _tftMatchesRepository.NewInsertMatchPlayerFromDto(account.Key, matchId, player);
 
         if (!inserted)
         {
@@ -219,7 +266,7 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accounts = (await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
+      var accounts = (await _riotAccountsRepository.NewGetActiveLolAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -229,16 +276,18 @@ namespace Pyrewatcher.Helpers
 
       foreach (var account in accounts)
       {
-        var leagueEntries = await _riotClient.LeagueV4.GetLeagueEntriesBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode, true));
+        var leagueEntries = await _riotClient.LeagueV4.GetLeagueEntriesBySummonerId(account.SummonerId, account.Server);
 
-        var entry = leagueEntries?.FirstOrDefault(x => x.QueueType == "RANKED_SOLO_5x5");
-
-        if (entry is null)
+        if (leagueEntries is null)
         {
           continue;
         }
-        
-        var updated = await _riotAccountsRepository.UpdateRankByIdAsync(account.Id, entry.Tier, entry.Rank, entry.LeaguePoints, entry.SeriesProgress);
+
+        var entry = leagueEntries.FirstOrDefault(x => x.QueueType == "RANKED_SOLO_5x5");
+
+        var updated = entry is null
+          ? await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, null, null, null, null)
+          : await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, entry.Tier, entry.Rank, entry.LeaguePoints, entry.SeriesProgress);
 
         if (!updated)
         {
@@ -263,7 +312,7 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accounts = (await _riotAccountsRepository.GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(broadcaster.Id)).ToList();
+      var accounts = (await _riotAccountsRepository.NewGetActiveTftAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -273,17 +322,18 @@ namespace Pyrewatcher.Helpers
 
       foreach (var account in accounts)
       {
-        var leagueEntries =
-          await _riotClient.TftLeagueV1.GetLeagueEntriesBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode, true));
+        var leagueEntries = await _riotClient.TftLeagueV1.GetLeagueEntriesBySummonerId(account.SummonerId, account.Server);
 
-        var entry = leagueEntries?.FirstOrDefault(x => x.QueueType == "RANKED_TFT");
-
-        if (entry is null)
+        if (leagueEntries is null)
         {
           continue;
         }
+        
+        var entry = leagueEntries.FirstOrDefault(x => x.QueueType == "RANKED_TFT");
 
-        var updated = await _riotAccountsRepository.UpdateRankByIdAsync(account.Id, entry.Tier, entry.Rank, entry.LeaguePoints, null);
+        var updated = entry is null
+          ? await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, null, null, null, null)
+          : await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, entry.Tier, entry.Rank, entry.LeaguePoints, null);
 
         if (!updated)
         {

@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Pyrewatcher.DataAccess.Interfaces;
-using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Interfaces;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -34,11 +32,11 @@ namespace Pyrewatcher.Commands
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.NewGetActiveLolAccountsForApiCallsByChannelIdAsync(broadcasterId);
 
       foreach (var account in accounts)
       {
-        var match = await _riotClient.SpectatorV4.GetActiveGameBySummonerId(account.SummonerId, Enum.Parse<Server>(account.ServerCode, true));
+        var match = await _riotClient.SpectatorV4.GetActiveGameBySummonerId(account.SummonerId, account.Server);
 
         if (match is null)
         {
@@ -49,8 +47,8 @@ namespace Pyrewatcher.Commands
 
         if (broadcaster is null)
         {
-          // TODO: Message failure
-          return true;
+          // TODO: Log failure
+          continue;
         }
 
         Globals.LolRunes ??= await _lolRunesRepository.GetAllAsync();

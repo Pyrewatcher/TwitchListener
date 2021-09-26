@@ -24,5 +24,15 @@ namespace Pyrewatcher.Riot.Utilities
         _ => null
       };
     }
+
+    public static RoutingValue ToRoutingValue(this Server server)
+    {
+      return server switch
+      {
+        Server.EUNE => RoutingValue.Europe,
+        Server.EUW => RoutingValue.Europe,
+        _ => throw new ArgumentOutOfRangeException(nameof(server), server, "This server is unsupported")
+      };
+    }
   }
 }

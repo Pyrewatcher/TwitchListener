@@ -17,67 +17,52 @@ namespace Pyrewatcher.Commands
 
     private readonly ILolChampionsRepository _lolChampionsRepository;
     private readonly ILolMatchesRepository _lolMatchesRepository;
-    private readonly IRiotAccountsRepository _riotAccountsRepository;
 
-    public LolCommand(TwitchClient client, ILolChampionsRepository lolChampionsRepository, ILolMatchesRepository lolMatchesRepository,
-                      IRiotAccountsRepository riotAccountsRepository)
+    public LolCommand(TwitchClient client, ILolChampionsRepository lolChampionsRepository, ILolMatchesRepository lolMatchesRepository)
     {
       _client = client;
       _lolChampionsRepository = lolChampionsRepository;
       _lolMatchesRepository = lolMatchesRepository;
-      _riotAccountsRepository = riotAccountsRepository;
     }
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(broadcasterId);
-
-      var matches = new List<LolMatch>();
-
-      foreach (var account in accounts)
-      {
-        var accountMatches = await _lolMatchesRepository.GetTodaysMatchesByAccountId(account.Id);
-        matches.AddRange(accountMatches);
-      }
+      var matches = (await _lolMatchesRepository.NewGetTodaysMatchesByChannelId(broadcasterId)).ToList();
 
       Globals.LolChampions ??= await _lolChampionsRepository.GetAllAsync();
 
       if (matches.Any())
       {
-        var wins = matches.Count(x => x.Result == "W");
-        var losses = matches.Count(x => x.Result == "L");
-
-        matches = matches.OrderBy(x => x.Timestamp).ToList();
+        var wins = matches.Count(x => x.WonMatch);
+        var losses = matches.Count - wins;
 
         if (matches.Count > 1)
         {
           var sb = new StringBuilder();
 
+          var kdaSum = new Kda();
+
           foreach (var match in matches)
           {
             sb.Append(Globals.LolChampions[match.ChampionId]);
-            sb.Append(" ");
-            sb.Append(match.Result == "W" ? "✔" : "✖");
+            sb.Append(' ');
+            sb.Append(match.WonMatch ? "✔" : "✖");
+
+            var kda = new Kda(match);
 
             if (matches.Count < 10)
             {
-              sb.Append(" ");
-              sb.Append(match.Kda);
+              sb.Append(' ');
+              sb.Append(kda);
             }
 
             sb.Append("; ");
+
+            kdaSum.Add(kda);
           }
 
           sb.Remove(sb.Length - 2, 2);
-
-          var kdaList = matches.Select(x => new Kda(x.Kda)).ToList();
-          var kdaSum = new Kda("0/0/0");
-
-          foreach (var kda in kdaList)
-          {
-            kdaSum.Add(kda);
-          }
 
           _client.SendMessage(message.Channel,
                               string.Format(Globals.Locale["lol_show_more_than_one"], wins, losses, sb, kdaSum.ToStringWithRatio(),
@@ -86,8 +71,8 @@ namespace Pyrewatcher.Commands
         else
         {
           var match = matches[0];
-          var matchKda = new Kda(match.Kda);
-          var matchString = $"{Globals.LolChampions[match.ChampionId]} {(match.Result == "W" ? "✔" : "✖")} {matchKda.ToStringWithRatio()}";
+          var matchKda = new Kda(match);
+          var matchString = $"{Globals.LolChampions[match.ChampionId]} {(match.WonMatch ? "✔" : "✖")} {matchKda.ToStringWithRatio()}";
 
           _client.SendMessage(message.Channel, string.Format(Globals.Locale["lol_show_one"], wins, losses, matchString));
         }
@@ -106,12 +91,11 @@ namespace Pyrewatcher.Commands
       private int _deaths;
       private int _assists;
 
-      public Kda(string kda)
+      public Kda(NewLolMatch match)
       {
-        var kdaSplit = kda.Split('/');
-        _kills = int.Parse(kdaSplit[0]);
-        _deaths = int.Parse(kdaSplit[1]);
-        _assists = int.Parse(kdaSplit[2]);
+        _kills = match.Kills;
+        _deaths = match.Deaths;
+        _assists = match.Assists;
       }
 
       private double Ratio

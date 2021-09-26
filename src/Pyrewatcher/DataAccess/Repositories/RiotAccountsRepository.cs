@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Models;
+using Pyrewatcher.Riot.Enums;
 using Pyrewatcher.Riot.Utilities;
 
 namespace Pyrewatcher.DataAccess.Repositories
@@ -14,7 +16,7 @@ namespace Pyrewatcher.DataAccess.Repositories
     {
 
     }
-
+    
     public async Task<IEnumerable<RiotAccount>> GetAccountsByBroadcasterIdAsync(long broadcasterId)
     {
       const string query = @"SELECT [Id], [GameAbbreviation], [SummonerName], [ServerCode], [DisplayName], [Active]
@@ -136,54 +138,79 @@ WHERE [Id] = @accountId;";
       return rows == 1;
     }
 
-    public async Task<IEnumerable<RiotAccount>> GetActiveLolAccountsForApiCallsByBroadcasterIdAsync(long broadcasterId)
+    public async Task<IEnumerable<NewRiotAccount>> NewGetActiveLolAccountsForApiCallsByChannelIdAsync(long channelId)
     {
-      const string query = @"SELECT [Id], [SummonerName], [ServerCode], [DisplayName], [SummonerId], [AccountId], [Puuid]
-FROM [RiotAccounts]
-WHERE [BroadcasterId] = @broadcasterId AND [GameAbbreviation] = 'lol' AND [Active] = 1;";
+      const string query = @"SELECT [NCRAG].[Key], [NRA].[SummonerName], [NRA].[ServerStr],
+  [NCRAG].[DisplayName], [NRAG].[SummonerId], [NRAG].[AccountId], [NRAG].[Puuid]
+FROM [NewChannelRiotAccountGames] [NCRAG]
+INNER JOIN [NewRiotAccountGames] [NRAG] ON [NRAG].[Id] = [NCRAG].[RiotAccountGameId]
+INNER JOIN [NewRiotAccounts] [NRA] ON [NRA].[Id] = [NRAG].[RiotAccountId]
+WHERE [NCRAG].[ChannelId] = @broadcasterId AND [NCRAG].[Active] = 1 AND [NRAG].[GameStr] = 'LeagueOfLegends';";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<RiotAccount>(query, new { broadcasterId });
+      var result = await connection.QueryAsync<NewRiotAccount>(query, new {broadcasterId = channelId});
+      foreach (var account in result)
+      {
+        account.Server = Enum.Parse<Server>(account.ServerStr);
+      }
 
       return result;
     }
 
-    public async Task<IEnumerable<RiotAccount>> GetActiveAccountsWithRankByBroadcasterIdAsync(long broadcasterId)
+    public async Task<IEnumerable<NewRiotAccount>> NewGetActiveAccountsWithRankByChannelIdAsync(long channelId)
     {
-      const string query = @"SELECT [GameAbbreviation], [SummonerName], [ServerCode], [DisplayName], [Tier], [Rank], [LeaguePoints], [SeriesProgress]
-FROM [RiotAccounts]
-WHERE [BroadcasterId] = @broadcasterId AND [GameAbbreviation] IN ('lol', 'tft') AND [Active] = 1;";
+      const string query = @"SELECT [NRA].[ServerStr], [NRAG].[GameStr], [NRA].[SummonerName], [NCRAG].[DisplayName],
+  [NRAG].[Tier], [NRAG].[Rank], [NRAG].[LeaguePoints], [NRAG].[SeriesProgress]
+FROM [NewChannelRiotAccountGames] [NCRAG]
+INNER JOIN [NewRiotAccountGames] [NRAG] ON [NRAG].[Id] = [NCRAG].[RiotAccountGameId]
+INNER JOIN [NewRiotAccounts] [NRA] ON [NRA].[Id] = [NRAG].[RiotAccountId]
+WHERE [NCRAG].[ChannelId] = @channelId AND [NCRAG].[Active] = 1
+ORDER BY [NCRAG].[DisplayName];";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<RiotAccount>(query, new { broadcasterId });
+      var result = await connection.QueryAsync<NewRiotAccount>(query, new { channelId });
+      foreach (var account in result)
+      {
+        account.Server = Enum.Parse<Server>(account.ServerStr);
+        account.Game = Enum.Parse<Game>(account.GameStr);
+      }
 
       return result;
     }
 
-    public async Task<IEnumerable<RiotAccount>> GetActiveTftAccountsForApiCallsByBroadcasterIdAsync(long broadcasterId)
+    public async Task<IEnumerable<NewRiotAccount>> NewGetActiveTftAccountsForApiCallsByChannelIdAsync(long channelId)
     {
-      const string query = @"SELECT [Id], [SummonerName], [ServerCode], [DisplayName], [SummonerId], [AccountId], [Puuid]
-FROM [RiotAccounts]
-WHERE [BroadcasterId] = @broadcasterId AND [GameAbbreviation] = 'tft' AND [Active] = 1;";
+      const string query = @"SELECT [NCRAG].[Key], [NRA].[SummonerName], [NRA].[ServerStr],
+  [NCRAG].[DisplayName], [NRAG].[SummonerId], [NRAG].[AccountId], [NRAG].[Puuid]
+FROM [NewChannelRiotAccountGames] [NCRAG]
+INNER JOIN [NewRiotAccountGames] [NRAG] ON [NRAG].[Id] = [NCRAG].[RiotAccountGameId]
+INNER JOIN [NewRiotAccounts] [NRA] ON [NRA].[Id] = [NRAG].[RiotAccountId]
+WHERE [NCRAG].[ChannelId] = @broadcasterId AND [NCRAG].[Active] = 1 AND [NRAG].[GameStr] = 'TeamfightTactics';";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<RiotAccount>(query, new { broadcasterId });
+      var result = await connection.QueryAsync<NewRiotAccount>(query, new {broadcasterId = channelId });
+      foreach (var account in result)
+      {
+        account.Server = Enum.Parse<Server>(account.ServerStr);
+      }
 
       return result;
     }
 
-    public async Task<bool> UpdateRankByIdAsync(long accountId, string tier, string rank, string leaguePoints, string seriesProgress)
+    public async Task<bool> NewUpdateRankByKeyAsync(string accountKey, string tier, string rank, string leaguePoints, string seriesProgress)
     {
-      const string query = @"UPDATE [RiotAccounts]
-SET [Tier] = @tier, [Rank] = @rank, [LeaguePoints] = @leaguePoints, [SeriesProgress] = @seriesProgress
-WHERE [Id] = @accountId;";
+      const string query = @"UPDATE [NRAG]
+SET [NRAG].[Tier] = @tier, [NRAG].[Rank] = @rank, [NRAG].[LeaguePoints] = @leaguePoints, [NRAG].[SeriesProgress] = @seriesProgress
+FROM [NewRiotAccountGames] [NRAG]
+INNER JOIN [NewChannelRiotAccountGames] [NCRAG] ON [NCRAG].[RiotAccountGameId] = [NRAG].[Id]
+WHERE [NCRAG].[Key] = @accountKey;";
 
       using var connection = await CreateConnectionAsync();
 
-      var rows = await connection.ExecuteAsync(query, new { accountId, tier, rank, leaguePoints, seriesProgress });
+      var rows = await connection.ExecuteAsync(query, new { accountKey, tier, rank, leaguePoints, seriesProgress });
 
       return rows == 1;
     }
@@ -191,8 +218,8 @@ WHERE [Id] = @accountId;";
     public async Task<RiotAccount> GetAccountForApiCallsByIdAsync(long accountId)
     {
       const string query = @"SELECT [Id], [GameAbbreviation], [SummonerName], [ServerCode], [DisplayName], [SummonerId], [AccountId], [Puuid]
-FROM [RiotAccounts]
-WHERE [Id] = @accountId;";
+    FROM [RiotAccounts]
+    WHERE [Id] = @accountId;";
 
       using var connection = await CreateConnectionAsync();
 

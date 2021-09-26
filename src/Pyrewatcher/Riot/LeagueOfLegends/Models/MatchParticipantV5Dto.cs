@@ -12,6 +12,8 @@ namespace Pyrewatcher.Riot.LeagueOfLegends.Models
     public int Deaths { get; set; }
     [JsonProperty("assists")]
     public int Assists { get; set; }
+    [JsonProperty("teamId")]
+    public long Team { get; set; }
     [JsonProperty("win")]
     public bool WonMatch { get; set; }
     [JsonProperty("visionWardsBoughtInGame")]

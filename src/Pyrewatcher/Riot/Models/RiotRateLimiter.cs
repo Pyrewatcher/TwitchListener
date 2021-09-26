@@ -25,12 +25,15 @@ namespace Pyrewatcher.Riot.Models
 
     public bool PickToken(string key)
     {
-      if (!_buckets.ContainsKey(key))
+      var bucketExists = _buckets.TryGetValue(key, out var bucket);
+
+      if (!bucketExists)
       {
-        _buckets.Add(key, new RiotRateLimiterBucket(20, 100));
+        bucket = new RiotRateLimiterBucket(20, 100);
+        _buckets.Add(key, bucket);
       }
 
-      return _buckets[key].PickToken();
+      return bucket.PickToken();
     }
   }
 
@@ -52,7 +55,7 @@ namespace Pyrewatcher.Riot.Models
 
       _perSecondStart = DateTime.UtcNow - TimeSpan.FromMinutes(10);
       _perTwoMinutesStart = DateTime.UtcNow - TimeSpan.FromMinutes(10);
-
+      
       _limitPerSecond = limitPerSecond;
       _limitPerTwoMinutes = limitPerTwoMinutes;
     }
@@ -90,7 +93,7 @@ namespace Pyrewatcher.Riot.Models
           _perSecondAvailableTokens--;
           _perTwoMinutesAvailableTokens--;
         }
-
+        
         return available;
       }
     }

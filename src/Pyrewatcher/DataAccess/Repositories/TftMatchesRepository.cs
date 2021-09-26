@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
@@ -17,51 +18,96 @@ namespace Pyrewatcher.DataAccess.Repositories
 
     }
 
-
-    public async Task<IEnumerable<string>> GetMatchesNotInDatabase(List<string> matches, long accountId)
+    public async Task<IEnumerable<string>> NewGetMatchesNotInDatabase(List<string> matches)
     {
-      const string query = @"SELECT [MatchId]
-FROM [TftMatches]
-WHERE [AccountId] = @accountId AND [MatchId] IN @matches;";
+      const string query = @"SELECT [StringId]
+FROM [NewTftMatches]
+WHERE [StringId] IN @matches;";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = (await connection.QueryAsync<string>(query, new { accountId, matches })).ToList();
+      var result = (await connection.QueryAsync<string>(query, new { matches })).ToList();
 
       var notInDatabase = matches.Where(x => !result.Contains(x));
 
       return notInDatabase;
     }
 
-    public async Task<bool> InsertFromDto(long accountId, string matchId, TftMatchV1Dto match, TftMatchParticipantV1Dto participant)
+    public async Task<IEnumerable<string>> NewGetMatchesToUpdateByKey(string accountKey, List<string> matches)
     {
-      const string query = @"INSERT INTO [TftMatches] ([MatchId], [AccountId], [Timestamp], [Place])
-VALUES (@matchId, @accountId, @timestamp, @place);";
+      const string query = @"SELECT [NTM].[StringId]
+FROM [NewTftMatches] [NTM]
+INNER JOIN [NewTftMatchPlayers] [NTMP] ON [NTMP].[TftMatchId] = [NTM].[Id]
+INNER JOIN [NewChannelRiotAccountGames] [NCRAG] ON [NCRAG].[RiotAccountGameId] = [NTMP].[RiotAccountGameId]
+WHERE [NCRAG].[Key] = @accountKey AND [NTM].[StringId] IN @matches;";
+
+      using var connection = await CreateConnectionAsync();
+
+      var result = await connection.QueryAsync<string>(query, new { accountKey, matches });
+
+      var notInDatabase = matches.Where(x => !result.Contains(x));
+
+      return notInDatabase;
+    }
+
+    public async Task<bool> NewInsertMatchFromDto(string matchId, TftMatchV1Dto match)
+    {
+      const string query = @"INSERT INTO [NewTftMatches] ([StringId], [GameStartTimestamp])
+VALUES (@matchId, @timestamp);";
 
       using var connection = await CreateConnectionAsync();
 
       var rows = await connection.ExecuteAsync(query, new
       {
         matchId,
-        accountId,
-        timestamp = match.Info.Timestamp,
-        place = participant.Place
+        timestamp = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(match.Info.Timestamp)
       });
 
       return rows == 1;
     }
 
-    public async Task<IEnumerable<TftMatch>> GetTodaysMatchesByAccountId(long accountId)
+    public async Task<bool> NewInsertMatchPlayerFromDto(string accountKey, string matchId, TftMatchParticipantV1Dto player)
     {
-      var timestamp = RiotUtilities.GetStartTimeInMilliseconds();
+      const string query = @"DECLARE @TftMatchId BIGINT;
+DECLARE @RiotAccountGameId BIGINT;
 
-      const string query = @"SELECT [Timestamp], [Place]
-FROM [TftMatches]
-WHERE [AccountId] = @accountId AND [Timestamp] > @timestamp;";
+SELECT @TftMatchId = [Id]
+FROM [NewTftMatches]
+WHERE [StringId] = @matchId;
+
+SELECT @RiotAccountGameId = [RiotAccountGameId]
+FROM [NewChannelRiotAccountGames]
+WHERE [Key] = @accountKey;
+
+INSERT INTO [NewTftMatchPlayers] ([TftMatchId], [RiotAccountGameId], [Place])
+VALUES (@TftMatchId, @RiotAccountGameId, @place);";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<TftMatch>(query, new {accountId, timestamp});
+      var rows = await connection.ExecuteAsync(query, new
+      {
+        matchId,
+        accountKey,
+        place = player.Place
+      });
+
+      return rows == 1;
+    }
+
+    public async Task<IEnumerable<NewTftMatch>> NewGetTodaysMatchesByChannelId(long channelId)
+    {
+      var timestamp = RiotUtilities.GetStartTime();
+
+      const string query = @"SELECT [NTMP].[Place]
+FROM [NewTftMatches] [NTM]
+INNER JOIN [NewTftMatchPlayers] [NTMP] ON [NTMP].[TftMatchId] = [NTM].[Id]
+INNER JOIN [NewChannelRiotAccountGames] [NCRAG] ON [NCRAG].[RiotAccountGameId] = [NTMP].[RiotAccountGameId]
+WHERE [NCRAG].[ChannelId] = @channelId AND [NTM].[GameStartTimestamp] >= @timestamp
+ORDER BY [NTM].[GameStartTimestamp];";
+
+      using var connection = await CreateConnectionAsync();
+
+      var result = await connection.QueryAsync<NewTftMatch>(query, new { channelId, timestamp });
 
       return result;
     }

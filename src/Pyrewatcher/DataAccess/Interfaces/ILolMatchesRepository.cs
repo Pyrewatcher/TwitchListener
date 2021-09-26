@@ -7,8 +7,10 @@ namespace Pyrewatcher.DataAccess.Interfaces
 {
   public interface ILolMatchesRepository
   {
-    Task<IEnumerable<string>> GetMatchesNotInDatabase(List<string> matches, long accountId);
-    Task<IEnumerable<LolMatch>> GetTodaysMatchesByAccountId(long accountId);
-    Task<bool> InsertFromDto(long accountId, string fullMatchId, MatchV5Dto match, MatchParticipantV5Dto participant);
+    Task<IEnumerable<string>> NewGetMatchesNotInDatabase(List<string> matches);
+    Task<IEnumerable<string>> NewGetMatchesToUpdateByKey(string accountKey, List<string> matches);
+    Task<IEnumerable<NewLolMatch>> NewGetTodaysMatchesByChannelId(long channelId);
+    Task<bool> NewInsertMatchFromDto(string matchId, MatchV5Dto match);
+    Task<bool> NewInsertMatchPlayerFromDto(string accountKey, string matchId, MatchParticipantV5Dto player);
   }
 }

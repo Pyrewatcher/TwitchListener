@@ -13,5 +13,7 @@ namespace Pyrewatcher.Riot.LeagueOfLegends.Models
     public long Timestamp { get; set; }
     [JsonProperty("participants")]
     public IEnumerable<MatchParticipantV5Dto> Players { get; set; }
+    [JsonProperty("teams")]
+    public IEnumerable<MatchTeamV5Dto> Teams { get; set; }
   }
 }
