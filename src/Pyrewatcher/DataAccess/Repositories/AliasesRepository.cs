@@ -120,6 +120,8 @@ WHERE [Id] = @aliasId;";
 
     public async Task<string> GetAliasCommandWithNameByBroadcasterIdAsync(string name, long broadcasterId)
     {
+      name = name.TrimStart('\\');
+
       const string query = @"SELECT [NewName]
 FROM [Aliases]
 WHERE [Name] = @name AND ([BroadcasterId] = 0 OR [BroadcasterId] = @broadcasterId);";
