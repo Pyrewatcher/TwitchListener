@@ -5,9 +5,7 @@ namespace Pyrewatcher.Models
   public class NewRiotAccount
   {
     public string Key { get; set; }
-    public long ChannelId { get; set; }
     public string SummonerName { get; set; }
-    public string NormalizedSummonerName { get; set; }
     public string ServerStr { get; set; }
     public Server Server { get; set; }
     public string GameStr { get; set; }
@@ -40,6 +38,11 @@ namespace Pyrewatcher.Models
 
         return output;
       }
+    }
+
+    public override string ToString()
+    {
+      return $"[{Key}] ➔ {DisplayName}";
     }
   }
 }

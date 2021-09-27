@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Pyrewatcher.Riot.Utilities
 {
@@ -41,16 +43,46 @@ namespace Pyrewatcher.Riot.Utilities
       return GetStartTimeOffset().ToUnixTimeSeconds();
     }
 
-    public static long GetStartTimeInMilliseconds()
-    {
-      return GetStartTimeOffset().ToUnixTimeMilliseconds();
-    }
-
     public static string NormalizeSummonerName(string summonerName)
     {
       var normalizedSummonerName = summonerName.Replace(" ", "").ToLower();
 
       return normalizedSummonerName;
+    }
+
+    // Source: https://stackoverflow.com/questions/36625891/create-a-unique-5-character-alphanumeric-string
+    public static string GenerateAccountKey()
+    {
+      var builder = new StringBuilder();
+
+      var possibleAlphaNumericValues = new[]
+      {
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1',
+        '2', '3', '4', '5', '6', '7', '8', '9'
+      };
+      
+      var upperBound = possibleAlphaNumericValues.Length - 1;
+      var crypto = new RNGCryptoServiceProvider();
+
+      for (var i = 1; i <= 5; i++)
+      {
+        var scale = uint.MaxValue;
+        
+        while (scale == uint.MaxValue)
+        {
+          var fourBytes = new byte[4];
+          crypto.GetBytes(fourBytes);
+          scale = BitConverter.ToUInt32(fourBytes, 0);
+        }
+
+        var scaledPercentageOfMax = scale / (double) uint.MaxValue;
+        var scaledRange = upperBound * scaledPercentageOfMax;
+        var index = (int) scaledRange;
+
+        builder.Append(possibleAlphaNumericValues[index]);
+      }
+
+      return builder.ToString();
     }
   }
 }

@@ -1,24 +1,28 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Pyrewatcher.Models;
+using Pyrewatcher.Riot.Enums;
+using Pyrewatcher.Riot.Interfaces;
 
 namespace Pyrewatcher.DataAccess.Interfaces
 {
   public interface IRiotAccountsRepository
   {
-    Task<bool> DeleteByIdAsync(long accountId);
-    Task<RiotAccount> GetAccountForDisplayByDetailsAsync(string gameAbbreviation, string serverCode, string summonerName, long broadcasterId);
-    Task<RiotAccount> GetAccountForDisplayByIdAsync(long accountId);
-    Task<IEnumerable<RiotAccount>> GetAccountsByBroadcasterIdAsync(long broadcasterId);
-    Task<IEnumerable<RiotAccount>> GetActiveAccountsByBroadcasterIdAsync(long broadcasterId);
+    Task<bool> NewDeleteChannelAccountByKey(string accountKey);
+    Task<NewRiotAccount> NewGetChannelAccountForLookupByKeyAsync(long channelId, string accountKey);
+    Task<IEnumerable<NewRiotAccount>> NewGetActiveAccountsForDisplayByChannelIdAsync(long channelId);
+    Task<IEnumerable<NewRiotAccount>> NewGetInactiveAccountsForDisplayByChannelIdAsync(long channelId);
     Task<IEnumerable<NewRiotAccount>> NewGetActiveAccountsWithRankByChannelIdAsync(long channelId);
     Task<IEnumerable<NewRiotAccount>> NewGetActiveLolAccountsForApiCallsByChannelIdAsync(long channelId);
     Task<IEnumerable<NewRiotAccount>> NewGetActiveTftAccountsForApiCallsByChannelIdAsync(long channelId);
-    Task InsertAccount(RiotAccount account);
-    Task<bool> ToggleActiveByIdAsync(long accountId);
-    Task<bool> UpdateDisplayNameByIdAsync(long accountId, string displayName);
+    Task<bool> NewInsertAccountGameFromDto(Game game, Server server, ISummonerDto summoner);
+    Task<bool> NewToggleActiveByKey(string accountKey);
+    Task<bool> NewUpdateDisplayNameByKeyAsync(string accountKey, string displayName);
     Task<bool> NewUpdateRankByKeyAsync(string accountKey, string tier, string rank, string leaguePoints, string seriesProgress);
-    Task<bool> UpdateSummonerNameByIdAsync(long accountId, string summonerName);
-    Task<RiotAccount> GetAccountForApiCallsByIdAsync(long accountId);
+    Task<bool> NewUpdateSummonerNameByKeyAsync(string accountKey, string summonerName);
+    Task<bool> NewIsAccountGameAssignedToChannel(long channelId, Game game, Server server, string summonerName);
+    Task<bool> NewExistsAccountGame(Game game, Server server, string summonerName);
+    Task<bool> NewAssignAccountGameToChannel(long channelId, Game game, Server server, string summonerName, string accountKey);
+    Task<string> NewGetAccountSummonerName(Server server, string normalizedSummonerName);
   }
 }

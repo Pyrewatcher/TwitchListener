@@ -34,5 +34,35 @@ namespace Pyrewatcher.Riot.Utilities
         _ => throw new ArgumentOutOfRangeException(nameof(server), server, "This server is unsupported")
       };
     }
+
+    public static string ToFullName(this Game game)
+    {
+      return game switch
+      {
+        Game.LeagueOfLegends => "League of Legends",
+        Game.TeamfightTactics => "Teamfight Tactics",
+        _ => throw new ArgumentOutOfRangeException(nameof(game), game, "This game is unsupported")
+      };
+    }
+
+    public static Server? ToServerEnum(this string serverString)
+    {
+      return serverString.ToUpper() switch
+      {
+        "EUNE" => Server.EUNE,
+        "EUW" => Server.EUW,
+        _ => null
+      };
+    }
+
+    public static string ToAbbreviation(this Game game)
+    {
+      return game switch
+      {
+        Game.LeagueOfLegends => "LOL",
+        Game.TeamfightTactics => "TFT",
+        _ => throw new ArgumentOutOfRangeException(nameof(game), game, "This game is unsupported")
+      };
+    }
   }
 }

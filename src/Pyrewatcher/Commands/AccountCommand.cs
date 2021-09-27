@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
@@ -19,10 +17,10 @@ namespace Pyrewatcher.Commands
   {
     public string Action { get; set; }
     public string Broadcaster { get; set; }
-    public string Game { get; set; }
-    public string Server { get; set; }
+    public Game Game { get; set; }
+    public Server Server { get; set; }
     public string SummonerName { get; set; }
-    public long AccountId { get; set; }
+    public string AccountKey { get; set; }
     public string NewDisplayName { get; set; }
   }
 
@@ -59,112 +57,115 @@ namespace Pyrewatcher.Commands
 
       var args = new AccountCommandArguments {Action = argsList[0].ToLower()};
 
-      switch (args.Action)
+      if (args.Action is "list" or "inactive")
       {
-        case "list" or "listactive": // [Broadcaster]
-          if (argsList.Count > 1)
-          {
-            args.Broadcaster = argsList[1];
-          }
-
-          break;
-        case "add": // <Game> <Server> <SummonerName>
-          if (argsList.Count < 4)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_usage"], message.DisplayName));
-
-            switch (argsList.Count)
-            {
-              // missing Game
-              case 1:
-                _logger.LogInformation("Game not provided - returning");
-
-                break;
-              // missing Server
-              case 2:
-                _logger.LogInformation("Server not provided - returning");
-
-                break;
-              // missing SummonerName
-              case 3:
-                _logger.LogInformation("Summoner name not provided - returning");
-
-                break;
-            }
-
-            return null;
-          }
-          else
-          {
-            args.Game = argsList[1];
-            args.Server = argsList[2];
-            args.SummonerName = string.Join(' ', argsList.Skip(3));
-          }
-
-          break;
-        case "remove" or "toggleactive" or "update": // <AccountId>
-          if (argsList.Count < 2)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale[$"account_{args.Action}_usage"], message.DisplayName));
-            _logger.LogInformation("Account ID not provided - returning");
-
-            return null;
-          }
-          else
-          {
-            if (!long.TryParse(argsList[1], out var accountId))
-            {
-              _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_invalidId"], message.DisplayName, argsList[1]));
-              _logger.LogInformation("Provided ID is invalid: {id} - returning", argsList[1]);
-
-              return null;
-            }
-
-            args.AccountId = accountId;
-          }
-
-          break;
-        case "display": // <AccountId> <NewDisplayName>
-          if (argsList.Count < 3)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_display_usage"], message.DisplayName));
-
-            switch (argsList.Count)
-            {
-              // missing AccountId
-              case 1:
-                _logger.LogInformation("Account ID not provided - returning");
-
-                break;
-              // missing NewDisplayName
-              case 2:
-                _logger.LogInformation("New display name not provided - returning");
-
-                break;
-            }
-
-            return null;
-          }
-          else
-          {
-            if (!long.TryParse(argsList[1], out var accountId))
-            {
-              _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_invalidId"], message.DisplayName, argsList[1]));
-              _logger.LogInformation("Provided ID is invalid: {id} - returning", argsList[1]);
-
-              return null;
-            }
-
-            args.AccountId = accountId;
-            args.NewDisplayName = string.Join(' ', argsList.Skip(2));
-          }
-
-          break;
-        default:
-          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_usage"], message.DisplayName));
-          _logger.LogInformation("Invalid action: {action} - returning", args.Action);
+        if (argsList.Count > 1)
+        {
+          args.Broadcaster = argsList[1];
+        }
+      }
+      else if (args.Action is "lookup" or "remove" or "toggle" or "update")
+      {
+        if (argsList.Count < 2)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale[$"account_{args.Action}_usage"], message.DisplayName));
+          _logger.LogInformation("Account key not provided - returning");
 
           return null;
+        }
+        else
+        {
+          args.AccountKey = argsList[1].TrimStart('[').TrimEnd(']');
+        }
+      }
+      else if (args.Action == "add")
+      {
+        if (argsList.Count < 4)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_usage"], message.DisplayName));
+
+          switch (argsList.Count)
+          {
+            // missing Game
+            case 1:
+              _logger.LogInformation("Game not provided - returning");
+
+              break;
+            // missing Server
+            case 2:
+              _logger.LogInformation("Server not provided - returning");
+
+              break;
+            // missing SummonerName
+            case 3:
+              _logger.LogInformation("Summoner name not provided - returning");
+
+              break;
+          }
+
+          return null;
+        }
+        else
+        {
+          var game = argsList[1].ToGameEnum();
+
+          if (game is null)
+          {
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidGame"], message.DisplayName, argsList[1]));
+            _logger.LogInformation("Invalid game - returning");
+
+            return null;
+          }
+
+          var server = argsList[2].ToServerEnum();
+
+          if (server is null)
+          {
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidServer"], message.DisplayName, argsList[2]));
+            _logger.LogInformation("Invalid server - returning");
+
+            return null;
+          }
+
+          args.Game = game.Value;
+          args.Server = server.Value;
+          args.SummonerName = string.Join(' ', argsList.Skip(3));
+        }
+      }
+      else if (args.Action == "display")
+      {
+        if (argsList.Count < 3)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_display_usage"], message.DisplayName));
+
+          switch (argsList.Count)
+          {
+            // missing AccountKey
+            case 1:
+              _logger.LogInformation("Account key not provided - returning");
+
+              break;
+            // missing NewDisplayName
+            case 2:
+              _logger.LogInformation("New display name not provided - returning");
+
+              break;
+          }
+
+          return null;
+        }
+        else
+        {
+          args.AccountKey = argsList[1];
+          args.NewDisplayName = string.Join(' ', argsList.Skip(2));
+        }
+      }
+      else
+      {
+        _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_usage"], message.DisplayName));
+        _logger.LogInformation("Invalid action: {action} - returning", args.Action);
+
+        return null;
       }
 
       return args;
@@ -172,7 +173,6 @@ namespace Pyrewatcher.Commands
 
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      /*
       var args = ParseAndValidateArguments(argsList, message);
 
       if (args is null)
@@ -180,154 +180,143 @@ namespace Pyrewatcher.Commands
         return false;
       }
 
-      List<RiotAccount> accountsList;
-      Broadcaster broadcaster;
-      RiotAccount account;
+      var channelId = long.Parse(message.RoomId);
 
-      switch (args.Action)
+      if (args.Action == "list")
       {
-        case "list": // \account list [Broadcaster]
+        Broadcaster broadcaster;
+
+        // check if Broadcaster is null
+        if (args.Broadcaster is not null)
         {
-          // check if Broadcaster is null
-          if (args.Broadcaster is not null)
-          {
-            // get given broadcaster
-            broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
+          // get given broadcaster
+          broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
 
-            // throw an error if broadcaster is not in the database - no need to check if it exists
-            if (broadcaster is null)
-            {
-              _client.SendMessage(message.Channel,
-                                  string.Format(Globals.Locale["account_broadcasterDoesNotExist"], message.DisplayName, args.Broadcaster));
-              _logger.LogInformation("Broadcaster {broadcaster} doesn't exist in the database - returning", args.Broadcaster);
-
-              return false;
-            }
-          }
-          else
+          // throw an error if broadcaster is not in the database - no need to check if it exists
+          if (broadcaster is null)
           {
-            // get current broadcaster
-            broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
-          }
-
-          // get accounts list
-          accountsList = (await _riotAccountsRepository.GetAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
-
-          // check if empty
-          if (accountsList.Count == 0)
-          {
-            // send message account_list_empty
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_list_empty"], message.DisplayName, broadcaster.DisplayName));
-          }
-          else
-          {
-            // send message account_list
             _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_list"], message.DisplayName, broadcaster.DisplayName,
-                                              ListToStringListAction(accountsList)));
-          }
-
-          break;
-        }
-        case "listactive": // \account listactive [Broadcaster]
-        {
-          // check if Broadcaster is null
-          if (args.Broadcaster is not null)
-          {
-            // get given broadcaster
-            broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
-
-            // throw an error if broadcaster is not in the database - no need to check if it exists
-            if (broadcaster is null)
-            {
-              _client.SendMessage(message.Channel,
-                                  string.Format(Globals.Locale["account_broadcasterDoesNotExist"], message.DisplayName, args.Broadcaster));
-              _logger.LogInformation("Broadcaster {broadcaster} doesn't exist in the database - returning", args.Broadcaster);
-
-              return false;
-            }
-          }
-          else
-          {
-            // get current broadcaster
-            broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
-          }
-
-          // get accounts list
-          accountsList = (await _riotAccountsRepository.GetActiveAccountsByBroadcasterIdAsync(broadcaster.Id)).ToList();
-
-          // check if empty
-          if (accountsList.Count == 0)
-          {
-            // send message account_listactive_empty
-            _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_listactive_empty"], message.DisplayName, broadcaster.DisplayName));
-          }
-          else
-          {
-            // send message account_listactive
-            _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_listactive"], message.DisplayName, broadcaster.DisplayName,
-                                              ListToStringListactiveAction(accountsList)));
-          }
-
-          break;
-        }
-        case "add": // \account add <Game> <Server> <SummonerName>
-        {
-          // check if game abbreviation exists
-          if (args.Game.ToGameEnum() is null)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidGame"], message.DisplayName, args.Game));
-            _logger.LogInformation("Game {game} doesn't exist in the database - returning", args.Game);
+                                string.Format(Globals.Locale["account_broadcasterDoesNotExist"], message.DisplayName, args.Broadcaster));
+            _logger.LogInformation("Broadcaster {broadcaster} doesn't exist in the database - returning", args.Broadcaster);
 
             return false;
           }
-
-          // check if server exists
-          var isServerValid = Enum.TryParse<Server>(args.Server, true, out _);
-
-          if (!isServerValid)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_add_invalidServer"], message.DisplayName, args.Server));
-            _logger.LogInformation("Server {server} doesn't exist in the database - returning", args.Server);
-
-            return false;
-          }
-
-          // check if account already exists in channel's Riot account list
+        }
+        else
+        {
+          // get current broadcaster
           broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
-          account = await _riotAccountsRepository.GetAccountForDisplayByDetailsAsync(args.Game, args.Server, args.SummonerName, broadcaster.Id);
+        }
 
-          if (account is not null)
+        // get accounts list
+        var accounts = (await _riotAccountsRepository.NewGetActiveAccountsForDisplayByChannelIdAsync(broadcaster.Id)).ToList();
+
+        // check if there are any accounts
+        if (accounts.Any())
+        {
+          // send message account_list
+          _client.SendMessage(message.Channel,
+                              string.Format(Globals.Locale["account_list"], message.DisplayName, broadcaster.DisplayName, string.Join(" | ", accounts)));
+        }
+        else
+        {
+          // send message account_list_empty
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_list_empty"], message.DisplayName, broadcaster.DisplayName));
+        }
+      }
+      else if (args.Action == "inactive")
+      {
+        Broadcaster broadcaster;
+
+        // check if Broadcaster is null
+        if (args.Broadcaster is not null)
+        {
+          // get given broadcaster
+          broadcaster = await _broadcastersRepository.GetByNameAsync(args.Broadcaster);
+
+          // throw an error if broadcaster is not in the database - no need to check if it exists
+          if (broadcaster is null)
           {
             _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_add_accountAlreadyExists"], message.DisplayName, account.ToStringShort()));
-            _logger.LogInformation("Account \"{account}\" already exists in the database - returning", account.ToStringShort());
+                                string.Format(Globals.Locale["account_broadcasterDoesNotExist"], message.DisplayName, args.Broadcaster));
+            _logger.LogInformation("Broadcaster {broadcaster} doesn't exist in the database - returning", args.Broadcaster);
 
             return false;
           }
+        }
+        else
+        {
+          // get current broadcaster
+          broadcaster = await _broadcastersRepository.GetByNameAsync(message.Channel);
+        }
 
-          // get data about the account from Riot API
-          switch (args.Game.ToLower())
+        // get accounts list
+        var accounts = (await _riotAccountsRepository.NewGetInactiveAccountsForDisplayByChannelIdAsync(broadcaster.Id)).ToList();
+
+        // check if there are any accounts
+        if (accounts.Any())
+        {
+          // send message account_inactive
+          _client.SendMessage(message.Channel,
+                              string.Format(Globals.Locale["account_inactive"], message.DisplayName, broadcaster.DisplayName, string.Join(" | ", accounts)));
+        }
+        else
+        {
+          // send message account_inactive_empty
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_inactive_empty"], message.DisplayName, broadcaster.DisplayName));
+        }
+      }
+      else if (args.Action == "lookup")
+      {
+        // retrieve account
+        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+
+        if (account is null)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountKey));
+          _logger.LogInformation("Account with key {key} is not assigned to this channel - returning", args.AccountKey);
+
+          return false;
+        }
+
+        // send message account_lookup_response
+        _client.SendMessage(message.Channel,
+                            string.Format(Globals.Locale["account_lookup_response"],
+                                          message.DisplayName,
+                                          account.DisplayName,
+                                          account.Game.ToFullName(),
+                                          account.Server,
+                                          account.SummonerName,
+                                          Globals.Locale[account.Active ? "yes" : "no"],
+                                          account.DisplayableRank ?? Globals.Locale["ranga_value_unavailable"]));
+      }
+      else if (args.Action == "add")
+      {
+        // check if account game is already assigned to channel
+        if (await _riotAccountsRepository.NewIsAccountGameAssignedToChannel(channelId, args.Game, args.Server, args.SummonerName))
+        {
+          _client.SendMessage(message.Channel,
+                              string.Format(Globals.Locale["account_add_accountAlreadyExists"], message.DisplayName,
+                                            $"{args.Game.ToAbbreviation()} {args.Server} {args.SummonerName}", message.Channel));
+          _logger.LogInformation("Account \"{account}\" is already assigned to channel {channel} - returning",
+                                 $"{args.Game.ToAbbreviation()} {args.Server} {args.SummonerName}", message.Channel);
+
+          return false;
+        }
+
+        string summonerName;
+        // check if account is already in the database
+        if (!await _riotAccountsRepository.NewExistsAccountGame(args.Game, args.Server, args.SummonerName))
+        {
+          // if not, get account data from Riot API and insert it
+          var summoner = args.Game switch
           {
-            case "lol":
-              var lolData = await _riotClient.SummonerV4.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true));
-              account = lolData is null
-                ? null
-                : new RiotAccount(broadcaster.Id, args.Game, lolData.Name, args.Server, lolData.SummonerId, lolData.AccountId, lolData.Puuid);
+            Game.LeagueOfLegends => await _riotClient.SummonerV4.GetSummonerByName(args.SummonerName, args.Server),
+            Game.TeamfightTactics => await _riotClient.TftSummonerV1.GetSummonerByName(args.SummonerName, args.Server),
+            _ => default(ISummonerDto)
+          };
 
-              break;
-            case "tft":
-              var tftData = await _riotClient.TftSummonerV1.GetSummonerByName(args.SummonerName, Enum.Parse<Server>(args.Server, true));
-              account = tftData is null
-                ? null
-                : new RiotAccount(broadcaster.Id, args.Game, tftData.Name, args.Server, tftData.SummonerId, tftData.AccountId, tftData.Puuid);
-
-              break;
-          }
-
-          if (account is null)
+          if (summoner is null)
           {
             _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountLoadingFailed"], message.DisplayName));
             _logger.LogInformation("Loading account data failed - returning");
@@ -335,208 +324,179 @@ namespace Pyrewatcher.Commands
             return false;
           }
 
-          await _riotAccountsRepository.InsertAccount(account);
+          summonerName = summoner.SummonerName;
 
+          var inserted = await _riotAccountsRepository.NewInsertAccountGameFromDto(args.Game, args.Server, summoner);
+
+          if (!inserted)
+          {
+            // TODO: Message failure
+            return false;
+          }
+        }
+        else
+        {
+          summonerName = await _riotAccountsRepository.NewGetAccountSummonerName(args.Server, RiotUtilities.NormalizeSummonerName(args.SummonerName));
+        }
+
+        // assign account to channel
+        var accountKey = RiotUtilities.GenerateAccountKey();
+        var assigned = await _riotAccountsRepository.NewAssignAccountGameToChannel(channelId, args.Game, args.Server, summonerName, accountKey);
+
+        if (assigned)
+        {
           _client.SendMessage(message.Channel,
-                              string.Format(Globals.Locale["account_add_accountAdded"], message.DisplayName, account.ToStringList()));
-
-          break;
+                              string.Format(Globals.Locale["account_add_accountAdded"], message.DisplayName,
+                                            $"{args.Game.ToAbbreviation()} {args.Server} {summonerName}"));
         }
-        case "remove": // \account remove <AccountId>
+        else
         {
-          // check if account with given id exists
-          account = await _riotAccountsRepository.GetAccountForDisplayByIdAsync(args.AccountId);
-
-          if (account is null)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
-            _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
-
-            return false;
-          }
-
-          // delete the account
-          var deleted = await _riotAccountsRepository.DeleteByIdAsync(args.AccountId);
-
-          if (deleted)
-          {
-            _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_remove_accountRemoved"], message.DisplayName, account.ToStringShort()));
-          }
-          else
-          {
-            // TODO: Message failure
-          }
-
-          break;
+          // TODO: Message failure
+          return false;
         }
-        case "toggleactive": // \account toggleactive <AccountId>
+      }
+      else if (args.Action == "remove")
+      {
+        // check if account with given key exists
+        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+
+        if (account is null)
         {
-          // check if account with given id exists
-          account = await _riotAccountsRepository.GetAccountForDisplayByIdAsync(args.AccountId);
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountKey));
+          _logger.LogInformation("Account with key {key} is not assigned to this channel - returning", args.AccountKey);
 
-          if (account is null)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
-            _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
-
-            return false;
-          }
-
-          var toggled = await _riotAccountsRepository.ToggleActiveByIdAsync(args.AccountId);
-
-          if (toggled)
-          {
-            _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_toggleactive_toggled"], message.DisplayName, account.ToStringShort(),
-                                              account.Active ? Globals.Locale["account_value_active"] : Globals.Locale["account_value_inactive"]));
-          }
-          else
-          {
-            // TODO: Message failure
-          }
-
-          break;
+          return false;
         }
-        case "display": // \account display <AccountId> <NewDisplayName>
+
+        var deleted = await _riotAccountsRepository.NewDeleteChannelAccountByKey(args.AccountKey);
+
+        if (deleted)
         {
-          // check if account with given id exists
-          account = await _riotAccountsRepository.GetAccountForDisplayByIdAsync(args.AccountId);
+          _client.SendMessage(message.Channel,
+                              string.Format(Globals.Locale["account_remove_accountRemoved"], message.DisplayName, account.DisplayName));
+        }
+        else
+        {
+          // TODO: Message failure
+          return false;
+        }
+      }
+      else if (args.Action == "toggle")
+      {
+        // check if account with given key exists
+        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
 
-          if (account is null)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
-            _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
+        if (account is null)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountKey));
+          _logger.LogInformation("Account with key {key} is not assigned to this channel - returning", args.AccountKey);
 
-            return false;
-          }
+          return false;
+        }
 
-          var newDisplayName = args.NewDisplayName == "-" ? "" : args.NewDisplayName;
-          var updated = await _riotAccountsRepository.UpdateDisplayNameByIdAsync(args.AccountId, newDisplayName);
+        var toggled = await _riotAccountsRepository.NewToggleActiveByKey(args.AccountKey);
+
+        if (toggled)
+        {
+          account.Active = !account.Active;
+          _client.SendMessage(message.Channel,
+                              string.Format(Globals.Locale["account_toggle_toggled"], message.DisplayName, account.DisplayName,
+                                            account.Active ? Globals.Locale["account_value_active"] : Globals.Locale["account_value_inactive"]));
+        }
+        else
+        {
+          // TODO: Message failure
+          return false;
+        }
+      }
+      else if (args.Action == "update")
+      {
+        // check if account with given key exists
+        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+
+        if (account is null)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountKey));
+          _logger.LogInformation("Account with key {key} is not assigned to this channel - returning", args.AccountKey);
+
+          return false;
+        }
+
+        var summoner = account.Game switch
+        {
+          Game.LeagueOfLegends => await _riotClient.SummonerV4.GetSummonerByName(account.SummonerName, account.Server),
+          Game.TeamfightTactics => await _riotClient.TftSummonerV1.GetSummonerByName(account.SummonerName, account.Server),
+          _ => default(ISummonerDto)
+        };
+
+        if (summoner is null)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountLoadingFailed"], message.DisplayName));
+          _logger.LogInformation("Loading account data failed - returning");
+
+          return false;
+        }
+        else if (summoner.SummonerName != account.SummonerName)
+        {
+          var updated = await _riotAccountsRepository.NewUpdateSummonerNameByKeyAsync(args.AccountKey, summoner.SummonerName);
 
           if (updated)
           {
-            if (args.NewDisplayName == "-")
-            {
-              _client.SendMessage(message.Channel,
-                                  string.Format(Globals.Locale["account_display_cleared"], message.DisplayName, account.ToStringShort()));
-            }
-            else
-            {
-              _client.SendMessage(message.Channel,
-                                  string.Format(Globals.Locale["account_display_changed"], message.DisplayName, account.ToStringShort(),
-                                                args.NewDisplayName));
-            }
+            _client.SendMessage(message.Channel,
+                                string.Format(Globals.Locale["account_update_updated"], message.DisplayName, account.SummonerName, summoner.SummonerName));
           }
           else
           {
             // TODO: Message failure
+            return false;
           }
-
-          break;
         }
-        case "update": // \account update <AccountId>
+        else
         {
-          // check if account with given id exists
-          account = await _riotAccountsRepository.GetAccountForApiCallsByIdAsync(args.AccountId);
+          _client.SendMessage(message.Channel,
+                              string.Format(Globals.Locale["account_update_noChange"], message.DisplayName, account.DisplayName));
+          _logger.LogInformation("Summoner name for account {account} didn't change - returning", account.DisplayName);
+        }
+      }
+      else if (args.Action == "display")
+      {
+        // check if account with given key exists
+        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
 
-          if (account is null)
+        if (account is null)
+        {
+          _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountKey));
+          _logger.LogInformation("Account with key {key} is not assigned to this channel - returning", args.AccountKey);
+
+          return false;
+        }
+
+        var newDisplayName = args.NewDisplayName == "-"
+          ? $"{account.Game.ToAbbreviation()} {account.Server} {account.SummonerName}"
+          : args.NewDisplayName;
+
+        var updated = await _riotAccountsRepository.NewUpdateDisplayNameByKeyAsync(args.AccountKey, newDisplayName);
+
+        if (updated)
+        {
+          if (args.NewDisplayName == "-")
           {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountDoesNotExist"], message.DisplayName, args.AccountId));
-            _logger.LogInformation("Account with ID {id} doesn't exist in the database - returning", args.AccountId);
-
-            return false;
-          }
-
-          string requestedSummonerName = null;
-          // get data about the account from Riot API
-          switch (account.GameAbbreviation.ToLower())
-          {
-            case "lol":
-              var lolData = await _riotClient.SummonerV4.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true));
-              requestedSummonerName = lolData?.Name;
-
-              break;
-            case "tft":
-              var tftData = await _riotClient.TftSummonerV1.GetSummonerByPuuid(account.Puuid, Enum.Parse<Server>(account.ServerCode, true));
-              requestedSummonerName = tftData?.Name;
-
-              break;
-          }
-
-          if (requestedSummonerName is null)
-          {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_accountLoadingFailed"], message.DisplayName));
-            _logger.LogInformation("Loading account data failed - returning");
-
-            return false;
-          }
-          else if (requestedSummonerName != account.SummonerName)
-          {
-            var updated = await _riotAccountsRepository.UpdateSummonerNameByIdAsync(args.AccountId, requestedSummonerName);
-
-            if (updated)
-            {
-              _client.SendMessage(message.Channel,
-                                  string.Format(Globals.Locale["account_update_updated"], message.DisplayName, account.SummonerName, requestedSummonerName));
-            }
-            else
-            {
-              // TODO: Message failure
-            }
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["account_display_cleared"], message.DisplayName, newDisplayName));
           }
           else
           {
             _client.SendMessage(message.Channel,
-                                string.Format(Globals.Locale["account_update_noChange"], message.DisplayName, account.ToStringShort()));
-            _logger.LogInformation("Summoner name for account {account} didn't change - returning", account.ToStringShort());
-
-            return false;
+                                string.Format(Globals.Locale["account_display_changed"], message.DisplayName,
+                                              $"{account.Game.ToAbbreviation()} {account.Server} {account.SummonerName}", args.NewDisplayName));
           }
-
-          break;
+        }
+        else
+        {
+          // TODO: Message failure
         }
       }
 
       return true;
-
-      /*/
-
-      _client.SendMessage(message.Channel, "Komenda jest tymczasowo niedostępna");
-
-      return await Task.FromResult(true);
-
-      //*/
-    }
-
-    private static string ListToStringListAction(List<RiotAccount> list)
-    {
-      var sb = new StringBuilder();
-
-      foreach (var account in list)
-      {
-        sb.Append(account.ToStringList());
-        sb.Append("; ");
-      }
-
-      sb.Remove(sb.Length - 2, 2);
-
-      return sb.ToString();
-    }
-
-    private static string ListToStringListactiveAction(List<RiotAccount> list)
-    {
-      var sb = new StringBuilder();
-
-      foreach (var account in list)
-      {
-        sb.Append(account.ToStringListactive());
-        sb.Append("; ");
-      }
-
-      sb.Remove(sb.Length - 2, 2);
-
-      return sb.ToString();
     }
   }
 }

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Models;
 using Pyrewatcher.Riot.Enums;
+using Pyrewatcher.Riot.Interfaces;
 using Pyrewatcher.Riot.Utilities;
 
 namespace Pyrewatcher.DataAccess.Repositories
@@ -16,124 +17,176 @@ namespace Pyrewatcher.DataAccess.Repositories
     {
 
     }
-    
-    public async Task<IEnumerable<RiotAccount>> GetAccountsByBroadcasterIdAsync(long broadcasterId)
+
+    public async Task<NewRiotAccount> NewGetChannelAccountForLookupByKeyAsync(long channelId, string accountKey)
     {
-      const string query = @"SELECT [Id], [GameAbbreviation], [SummonerName], [ServerCode], [DisplayName], [Active]
-FROM [RiotAccounts]
-WHERE [BroadcasterId] = @broadcasterId;";
+      const string query = @"SELECT TOP 1 [NRA].[ServerStr], [NRAG].[GameStr], [NRA].[SummonerName], [NCRAG].[DisplayName],
+  [NCRAG].[Active], [NRAG].[Tier], [NRAG].[Rank], [NRAG].[LeaguePoints], [NRAG].[SeriesProgress]
+FROM [NewChannelRiotAccountGames] [NCRAG]
+INNER JOIN [NewRiotAccountGames] [NRAG] ON [NRAG].[Id] = [NCRAG].[RiotAccountGameId]
+INNER JOIN [NewRiotAccounts] [NRA] ON [NRA].[Id] = [NRAG].[RiotAccountId]
+WHERE [NCRAG].[ChannelId] = @channelId AND [NCRAG].[Key] = @accountKey;";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<RiotAccount>(query, new { broadcasterId });
+      var result = await connection.QuerySingleOrDefaultAsync<NewRiotAccount>(query, new { channelId, accountKey });
+
+      if (result is not null)
+      {
+        result.Server = Enum.Parse<Server>(result.ServerStr);
+        result.Game = Enum.Parse<Game>(result.GameStr);
+      }
 
       return result;
     }
 
-    public async Task<IEnumerable<RiotAccount>> GetActiveAccountsByBroadcasterIdAsync(long broadcasterId)
+    public async Task<IEnumerable<NewRiotAccount>> NewGetActiveAccountsForDisplayByChannelIdAsync(long channelId)
     {
-      const string query = @"SELECT [Id], [GameAbbreviation], [SummonerName], [ServerCode], [DisplayName]
-FROM [RiotAccounts]
-WHERE [BroadcasterId] = @broadcasterId AND [Active] = 1;";
+      const string query = @"SELECT [NCRAG].[Key], [NCRAG].[DisplayName]
+FROM [NewChannelRiotAccountGames] [NCRAG]
+WHERE [NCRAG].[ChannelId] = @channelId AND [NCRAG].[Active] = 1
+ORDER BY [NCRAG].[DisplayName];";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<RiotAccount>(query, new { broadcasterId });
+      var result = await connection.QueryAsync<NewRiotAccount>(query, new { channelId });
 
       return result;
     }
 
-    public async Task<RiotAccount> GetAccountForDisplayByDetailsAsync(string gameAbbreviation, string serverCode, string summonerName, long broadcasterId)
+    public async Task<IEnumerable<NewRiotAccount>> NewGetInactiveAccountsForDisplayByChannelIdAsync(long channelId)
     {
-      gameAbbreviation = gameAbbreviation.ToLower();
-      serverCode = serverCode.ToUpper();
-      summonerName = RiotUtilities.NormalizeSummonerName(summonerName);
-
-      const string query = @"SELECT [GameAbbreviation], [SummonerName], [ServerCode]
-FROM [RiotAccounts]
-WHERE [GameAbbreviation] = @gameAbbreviation AND [ServerCode] = @serverCode
-  AND [NormalizedSummonerName] = @summonerName AND [BroadcasterId] = @broadcasterId;";
+      const string query = @"SELECT [NCRAG].[Key], [NCRAG].[DisplayName]
+FROM [NewChannelRiotAccountGames] [NCRAG]
+WHERE [NCRAG].[ChannelId] = @channelId AND [NCRAG].[Active] = 0
+ORDER BY [NCRAG].[DisplayName];";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryFirstOrDefaultAsync<RiotAccount>(query, new { gameAbbreviation, serverCode, summonerName, broadcasterId });
+      var result = await connection.QueryAsync<NewRiotAccount>(query, new { channelId });
 
       return result;
     }
 
-    public async Task InsertAccount(RiotAccount account)
+    public async Task<bool> NewDeleteChannelAccountByKey(string accountKey)
     {
-      const string query = @"INSERT INTO [RiotAccounts] (BroadcasterId, GameAbbreviation, SummonerName, NormalizedSummonerName,
-  ServerCode, SummonerId, AccountId, Puuid)
-OUTPUT [inserted].[Id]
-VALUES (@BroadcasterId, @GameAbbreviation, @SummonerName, @NormalizedSummonerName, @ServerCode, @SummonerId, @AccountId, @Puuid);";
+      const string query = @"DECLARE @RiotAccountGameId BIGINT;
+DECLARE @RiotAccountId BIGINT;
+
+SELECT @RiotAccountId = [NRAG].[Id], @RiotAccountGameId = [NCRAG].[RiotAccountGameId]
+FROM [NewChannelRiotAccountGames] [NCRAG]
+INNER JOIN [NewRiotAccountGames] [NRAG] ON [NRAG].[Id] = [NCRAG].[RiotAccountGameId]
+WHERE [NCRAG].[Key] = @accountKey;
+
+DELETE FROM [NewChannelRiotAccountGames]
+WHERE [Key] = @accountKey;
+
+IF NOT EXISTS (
+  SELECT TOP 1 *
+  FROM [NewChannelRiotAccountGames]
+  WHERE [RiotAccountGameId] = @RiotAccountGameId
+)
+  DELETE FROM [NewRiotAccountGames]
+  WHERE [Id] = @RiotAccountGameId;
+
+IF NOT EXISTS (
+  SELECT TOP 1 *
+  FROM [NewRiotAccountGames]
+  WHERE [RiotAccountId] = @RiotAccountId
+)
+  DELETE FROM [NewRiotAccounts]
+  WHERE [Id] = @RiotAccountId;";
 
       using var connection = await CreateConnectionAsync();
 
-      account.Id = await connection.ExecuteScalarAsync<long>(query, account);
+      var rows = await connection.ExecuteAsync(query, new {accountKey});
+
+      return rows > 0;
     }
 
-    public async Task<bool> DeleteByIdAsync(long accountId)
+    public async Task<bool> NewInsertAccountGameFromDto(Game game, Server server, ISummonerDto summoner)
     {
-      const string query = "DELETE FROM [RiotAccounts] WHERE [Id] = @accountId;";
+      var gameStr = game.ToString();
+      var serverStr = server.ToString();
+      var normalizedSummonerName = RiotUtilities.NormalizeSummonerName(summoner.SummonerName);
 
-      using var connection = await CreateConnectionAsync();
+      const string query = @"DECLARE @RiotAccountId BIGINT = NULL;
 
-      var rows = await connection.ExecuteAsync(query, new { accountId });
+SELECT TOP 1 @RiotAccountId = [NRA].[Id]
+FROM [NewRiotAccounts] [NRA]
+WHERE [NRA].[ServerStr] = @serverStr AND [NRA].[NormalizedSummonerName] = @normalizedSummonerName;
 
-      return rows == 1;
+IF @RiotAccountId IS NULL
+BEGIN
+  DECLARE @IdTable TABLE ([Id] BIGINT);
+
+  INSERT INTO [NewRiotAccounts] ([ServerStr], [SummonerName], [NormalizedSummonerName])
+  OUTPUT [inserted].[Id] INTO @IdTable
+  VALUES (@serverStr, @summonerName, @normalizedSummonerName);
+
+  SELECT TOP 1 @RiotAccountId = [Id]
+  FROM @IdTable;
+END
+
+INSERT INTO [NewRiotAccountGames] ([RiotAccountId], [GameStr], [SummonerId], [AccountId], [Puuid])
+VALUES (@RiotAccountId, @gameStr, @summonerId, @accountId, @puuid);";
+
+      var connection = await CreateConnectionAsync();
+
+      var rows = await connection.ExecuteAsync(query, new
+      {
+        serverStr,
+        normalizedSummonerName,
+        summonerName = summoner.SummonerName,
+        gameStr,
+        summonerId = summoner.SummonerId,
+        accountId = summoner.AccountId,
+        puuid = summoner.Puuid
+      });
+
+      return rows is 1 or 2;
     }
 
-    public async Task<RiotAccount> GetAccountForDisplayByIdAsync(long accountId)
+    public async Task<bool> NewToggleActiveByKey(string accountKey)
     {
-      const string query = @"SELECT [GameAbbreviation], [SummonerName], [ServerCode]
-FROM [RiotAccounts]
-WHERE [Id] = @accountId;";
-
-      using var connection = await CreateConnectionAsync();
-
-      var result = await connection.QueryFirstOrDefaultAsync<RiotAccount>(query, new { accountId });
-
-      return result;
-    }
-
-    public async Task<bool> ToggleActiveByIdAsync(long accountId)
-    {
-      const string query = @"UPDATE [RiotAccounts]
+      const string query = @"UPDATE [NewRiotAccounts]
 SET [Active] = ~[Active]
-WHERE [Id] = @accountId;";
+WHERE [Key] = @accountKey;";
 
       using var connection = await CreateConnectionAsync();
 
-      var rows = await connection.ExecuteAsync(query, new { accountId });
+      var rows = await connection.ExecuteAsync(query, new { accountKey });
 
       return rows == 1;
     }
 
-    public async Task<bool> UpdateDisplayNameByIdAsync(long accountId, string displayName)
+    public async Task<bool> NewUpdateDisplayNameByKeyAsync(string accountKey, string displayName)
     {
-      const string query = @"UPDATE [RiotAccounts]
+      const string query = @"UPDATE [NewRiotAccounts]
 SET [DisplayName] = @displayName
-WHERE [Id] = @accountId;";
+WHERE [Key] = @accountKey;";
 
       using var connection = await CreateConnectionAsync();
 
-      var rows = await connection.ExecuteAsync(query, new { accountId, displayName });
+      var rows = await connection.ExecuteAsync(query, new { accountKey, displayName });
 
       return rows == 1;
     }
 
-    public async Task<bool> UpdateSummonerNameByIdAsync(long accountId, string summonerName)
+    public async Task<bool> NewUpdateSummonerNameByKeyAsync(string accountKey, string summonerName)
     {
       var normalizedSummonerName = RiotUtilities.NormalizeSummonerName(summonerName);
 
-      const string query = @"UPDATE [RiotAccounts]
-SET [SummonerName] = @summonerName, [NormalizedSummonerName] = @normalizedSummonerName
-WHERE [Id] = @accountId;";
+      const string query = @"UPDATE [NRA]
+SET [NRA].[SummonerName] = @summonerName, [NRA].[NormalizedSummonerName] = @normalizedSummonerName
+FROM [NewRiotAccounts] [NRA]
+INNER JOIN [NewRiotAccountGames] [NRAG] ON [NRAG].[RiotAccountId] = [NRA].[Id]
+INNER JOIN [NewChannelRiotAccountGames] [NCRAG] ON [NCRAG].[RiotAccountGameId] = [NRAG].[Id]
+WHERE [NCRAG].[Key] = @accountKey;";
 
       using var connection = await CreateConnectionAsync();
 
-      var rows = await connection.ExecuteAsync(query, new { accountId, summonerName, normalizedSummonerName });
+      var rows = await connection.ExecuteAsync(query, new { accountKey, summonerName, normalizedSummonerName });
 
       return rows == 1;
     }
@@ -215,15 +268,89 @@ WHERE [NCRAG].[Key] = @accountKey;";
       return rows == 1;
     }
 
-    public async Task<RiotAccount> GetAccountForApiCallsByIdAsync(long accountId)
+    public async Task<bool> NewIsAccountGameAssignedToChannel(long channelId, Game game, Server server, string summonerName)
     {
-      const string query = @"SELECT [Id], [GameAbbreviation], [SummonerName], [ServerCode], [DisplayName], [SummonerId], [AccountId], [Puuid]
-    FROM [RiotAccounts]
-    WHERE [Id] = @accountId;";
+      var gameStr = game.ToString();
+      var serverStr = server.ToString();
+      var normalizedSummonerName = RiotUtilities.NormalizeSummonerName(summonerName);
+
+      const string query = @"SELECT CASE WHEN EXISTS (
+  SELECT TOP 1 *
+  FROM [NewChannelRiotAccountGames] [NCRAG]
+  INNER JOIN [NewRiotAccountGames] [NRAG] ON [NRAG].[Id] = [NCRAG].[RiotAccountGameId]
+  INNER JOIN [NewRiotAccounts] [NRA] ON [NRA].[Id] = [NRAG].[RiotAccountId]
+  WHERE [NCRAG].[ChannelId] = @channelId AND [NRA].[ServerStr] = @serverStr AND [NRAG].[GameStr] = @gameStr AND [NRA].[NormalizedSummonerName] = @normalizedSummonerName
+) THEN 1 ELSE 0 END;";
+
+      var connection = await CreateConnectionAsync();
+
+      var result = await connection.QuerySingleAsync<bool>(query, new {channelId, gameStr, serverStr, normalizedSummonerName});
+
+      return result;
+    }
+
+    public async Task<bool> NewExistsAccountGame(Game game, Server server, string summonerName)
+    {
+      var gameStr = game.ToString();
+      var serverStr = server.ToString();
+      var normalizedSummonerName = RiotUtilities.NormalizeSummonerName(summonerName);
+
+      const string query = @"SELECT CASE WHEN EXISTS (
+  SELECT TOP 1 *
+  FROM [NewRiotAccountGames] [NRAG]
+  INNER JOIN [NewRiotAccounts] [NRA] ON [NRA].[Id] = [NRAG].[RiotAccountId]
+  WHERE [NRA].[ServerStr] = @serverStr AND [NRAG].[GameStr] = @gameStr AND [NRA].[NormalizedSummonerName] = @normalizedSummonerName
+) THEN 1 ELSE 0 END;";
+
+      var connection = await CreateConnectionAsync();
+
+      var result = await connection.QuerySingleAsync<bool>(query, new { gameStr, serverStr, normalizedSummonerName });
+
+      return result;
+    }
+
+    public async Task<bool> NewAssignAccountGameToChannel(long channelId, Game game, Server server, string summonerName, string accountKey)
+    {
+      var gameStr = game.ToString();
+      var serverStr = server.ToString();
+      var normalizedSummonerName = RiotUtilities.NormalizeSummonerName(summonerName);
+
+      const string query = @"DECLARE @RiotAccountGameId BIGINT = NULL;
+
+SELECT TOP 1 @RiotAccountGameId = [NRAG].[Id]
+FROM [NewRiotAccountGames] [NRAG]
+INNER JOIN [NewRiotAccounts] [NRA] ON [NRA].[Id] = [NRAG].[RiotAccountId]
+WHERE [NRAG].[GameStr] = @gameStr AND [NRA].[ServerStr] = @serverStr AND [NRA].[NormalizedSummonerName] = @normalizedSummonerName;
+
+INSERT INTO [NewChannelRiotAccountGames] ([ChannelId], [RiotAccountGameId], [Key], [DisplayName], [Active])
+VALUES (@channelId, @RiotAccountGameId, @accountKey, @displayName, 1);";
+
+      var connection = await CreateConnectionAsync();
+
+      var rows = await connection.ExecuteAsync(query, new
+      {
+        gameStr,
+        serverStr,
+        normalizedSummonerName,
+        channelId,
+        accountKey,
+        displayName = $"{game.ToAbbreviation()} {server} {summonerName}"
+      });
+
+      return rows == 1;
+    }
+
+    public async Task<string> NewGetAccountSummonerName(Server server, string normalizedSummonerName)
+    {
+      var serverStr = server.ToString();
+
+      const string query = @"SELECT TOP 1 [SummonerName]
+FROM [NewRiotAccounts]
+WHERE [ServerStr] = @serverStr AND [NormalizedSummonerName] = @normalizedSummonerName;";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryFirstOrDefaultAsync<RiotAccount>(query, new { accountId });
+      var result = await connection.QuerySingleAsync<string>(query, new {serverStr, normalizedSummonerName});
 
       return result;
     }

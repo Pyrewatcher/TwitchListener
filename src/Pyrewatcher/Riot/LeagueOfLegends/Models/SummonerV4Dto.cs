@@ -1,8 +1,9 @@
 ﻿using Newtonsoft.Json;
+using Pyrewatcher.Riot.Interfaces;
 
 namespace Pyrewatcher.Riot.LeagueOfLegends.Models
 {
-  public class SummonerV4Dto
+  public class SummonerV4Dto : ISummonerDto
   {
     [JsonProperty("accountId")]
     public string AccountId { get; set; }
@@ -11,6 +12,6 @@ namespace Pyrewatcher.Riot.LeagueOfLegends.Models
     [JsonProperty("puuid")]
     public string Puuid { get; set; }
     [JsonProperty("name")]
-    public string Name { get; set; }
+    public string SummonerName { get; set; }
   }
 }
