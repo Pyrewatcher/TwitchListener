@@ -28,7 +28,7 @@ namespace Pyrewatcher.Commands
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var matches = (await _lolMatchesRepository.NewGetTodaysMatchesByChannelId(broadcasterId)).ToList();
+      var matches = (await _lolMatchesRepository.GetTodaysMatchesByChannelIdAsync(broadcasterId)).ToList();
 
       Globals.LolChampions ??= await _lolChampionsRepository.GetAllAsync();
 
@@ -91,7 +91,7 @@ namespace Pyrewatcher.Commands
       private int _deaths;
       private int _assists;
 
-      public Kda(NewLolMatch match)
+      public Kda(LolMatch match)
       {
         _kills = match.Kills;
         _deaths = match.Deaths;

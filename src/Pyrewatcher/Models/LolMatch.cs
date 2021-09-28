@@ -1,6 +1,6 @@
 ﻿namespace Pyrewatcher.Models
 {
-  public class NewLolMatch
+  public class LolMatch
   {
     public bool WonMatch { get; set; }
     public long ChampionId { get; set; }

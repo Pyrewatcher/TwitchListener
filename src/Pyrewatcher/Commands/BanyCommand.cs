@@ -31,7 +31,7 @@ namespace Pyrewatcher.Commands
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccountsRepository.NewGetActiveLolAccountsForApiCallsByChannelIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByChannelIdAsync(broadcasterId);
 
       foreach (var account in accounts)
       {

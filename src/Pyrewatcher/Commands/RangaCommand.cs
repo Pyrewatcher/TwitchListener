@@ -28,7 +28,7 @@ namespace Pyrewatcher.Commands
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var accounts = await _riotAccountsRepository.NewGetActiveAccountsWithRankByChannelIdAsync(broadcasterId);
+      var accounts = await _riotAccountsRepository.GetActiveAccountsWithRankByChannelIdAsync(broadcasterId);
 
       if (accounts.Any())
       {
@@ -55,7 +55,7 @@ namespace Pyrewatcher.Commands
       return true;
     }
 
-    private static string GenerateAccountUrl(NewRiotAccount account)
+    private static string GenerateAccountUrl(RiotAccount account)
     {
       var url = account.Game switch
       {

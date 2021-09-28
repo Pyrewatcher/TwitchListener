@@ -101,7 +101,7 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accounts = (await _riotAccountsRepository.NewGetActiveLolAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
+      var accounts = (await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -110,7 +110,7 @@ namespace Pyrewatcher.Helpers
       }
       
       var matchesToInsert = new List<string>();
-      var matchesToUpdate = new List<(string, NewRiotAccount)>();
+      var matchesToUpdate = new List<(string, RiotAccount)>();
 
       foreach (var account in accounts)
       {
@@ -124,8 +124,8 @@ namespace Pyrewatcher.Helpers
 
         var matchesList = matches.ToList();
 
-        var matchesNotInDatabase = (await _lolMatchesRepository.NewGetMatchesNotInDatabase(matchesList)).ToList();
-        var matchesNotUpdated = (await _lolMatchesRepository.NewGetMatchesToUpdateByKey(account.Key, matchesList.Except(matchesNotInDatabase).ToList())).ToList();
+        var matchesNotInDatabase = (await _lolMatchesRepository.GetMatchesNotInDatabaseAsync(matchesList)).ToList();
+        var matchesNotUpdated = (await _lolMatchesRepository.GetMatchesToUpdateByKeyAsync(account.Key, matchesList.Except(matchesNotInDatabase).ToList())).ToList();
         matchesToInsert.AddRange(matchesNotInDatabase);
         matchesToUpdate.AddRange(matchesNotInDatabase.Select(x => (x, account)));
         matchesToUpdate.AddRange(matchesNotUpdated.Select(x => (x, account)));
@@ -142,7 +142,7 @@ namespace Pyrewatcher.Helpers
 
         if (matchesToInsert.Contains(matchId))
         {
-          var matchInserted = await _lolMatchesRepository.NewInsertMatchFromDto(matchId, match);
+          var matchInserted = await _lolMatchesRepository.InsertMatchFromDtoAsync(matchId, match);
 
           if (!matchInserted)
           {
@@ -159,7 +159,7 @@ namespace Pyrewatcher.Helpers
           continue;
         }
 
-        var playerInserted = await _lolMatchesRepository.NewInsertMatchPlayerFromDto(account.Key, matchId, player);
+        var playerInserted = await _lolMatchesRepository.InsertMatchPlayerFromDtoAsync(account.Key, matchId, player);
 
         if (!playerInserted)
         {
@@ -184,7 +184,7 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accounts = (await _riotAccountsRepository.NewGetActiveTftAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
+      var accounts = (await _riotAccountsRepository.GetActiveTftAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -193,7 +193,7 @@ namespace Pyrewatcher.Helpers
       }
 
       var matchesToInsert = new List<string>();
-      var matchesToUpdate = new List<(string, NewRiotAccount)>();
+      var matchesToUpdate = new List<(string, RiotAccount)>();
 
       foreach (var account in accounts)
       {
@@ -206,8 +206,8 @@ namespace Pyrewatcher.Helpers
 
         var matchesList = matches.ToList();
 
-        var matchesNotInDatabase = (await _tftMatchesRepository.NewGetMatchesNotInDatabase(matchesList)).ToList();
-        var matchesNotUpdated = (await _tftMatchesRepository.NewGetMatchesToUpdateByKey(account.Key, matchesList.Except(matchesNotInDatabase).ToList())).ToList();
+        var matchesNotInDatabase = (await _tftMatchesRepository.GetMatchesNotInDatabaseAsync(matchesList)).ToList();
+        var matchesNotUpdated = (await _tftMatchesRepository.GetMatchesToUpdateByKeyAsync(account.Key, matchesList.Except(matchesNotInDatabase).ToList())).ToList();
         matchesToInsert.AddRange(matchesNotInDatabase);
         matchesToUpdate.AddRange(matchesNotInDatabase.Select(x => (x, account)));
         matchesToUpdate.AddRange(matchesNotUpdated.Select(x => (x, account)));
@@ -224,7 +224,7 @@ namespace Pyrewatcher.Helpers
 
         if (matchesToInsert.Contains(matchId))
         {
-          var matchInserted = await _tftMatchesRepository.NewInsertMatchFromDto(matchId, match);
+          var matchInserted = await _tftMatchesRepository.InsertMatchFromDtoAsync(matchId, match);
 
           if (!matchInserted)
           {
@@ -241,7 +241,7 @@ namespace Pyrewatcher.Helpers
           continue;
         }
 
-        var inserted = await _tftMatchesRepository.NewInsertMatchPlayerFromDto(account.Key, matchId, player);
+        var inserted = await _tftMatchesRepository.InsertMatchPlayerFromDtoAsync(account.Key, matchId, player);
 
         if (!inserted)
         {
@@ -266,7 +266,7 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accounts = (await _riotAccountsRepository.NewGetActiveLolAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
+      var accounts = (await _riotAccountsRepository.GetActiveLolAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -286,8 +286,8 @@ namespace Pyrewatcher.Helpers
         var entry = leagueEntries.FirstOrDefault(x => x.QueueType == "RANKED_SOLO_5x5");
 
         var updated = entry is null
-          ? await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, null, null, null, null)
-          : await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, entry.Tier, entry.Rank, entry.LeaguePoints, entry.SeriesProgress);
+          ? await _riotAccountsRepository.UpdateRankByKeyAsync(account.Key, null, null, null, null)
+          : await _riotAccountsRepository.UpdateRankByKeyAsync(account.Key, entry.Tier, entry.Rank, entry.LeaguePoints, entry.SeriesProgress);
 
         if (!updated)
         {
@@ -312,7 +312,7 @@ namespace Pyrewatcher.Helpers
         return;
       }
 
-      var accounts = (await _riotAccountsRepository.NewGetActiveTftAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
+      var accounts = (await _riotAccountsRepository.GetActiveTftAccountsForApiCallsByChannelIdAsync(broadcaster.Id)).ToList();
 
       // skip if no active accounts for update
       if (!accounts.Any())
@@ -332,8 +332,8 @@ namespace Pyrewatcher.Helpers
         var entry = leagueEntries.FirstOrDefault(x => x.QueueType == "RANKED_TFT");
 
         var updated = entry is null
-          ? await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, null, null, null, null)
-          : await _riotAccountsRepository.NewUpdateRankByKeyAsync(account.Key, entry.Tier, entry.Rank, entry.LeaguePoints, null);
+          ? await _riotAccountsRepository.UpdateRankByKeyAsync(account.Key, null, null, null, null)
+          : await _riotAccountsRepository.UpdateRankByKeyAsync(account.Key, entry.Tier, entry.Rank, entry.LeaguePoints, null);
 
         if (!updated)
         {

@@ -1,6 +1,6 @@
 ﻿namespace Pyrewatcher.Models
 {
-  public class NewTftMatch
+  public class TftMatch
   {
     public int Place { get; set; }
   }

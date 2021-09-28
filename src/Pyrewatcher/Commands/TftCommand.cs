@@ -24,7 +24,7 @@ namespace Pyrewatcher.Commands
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var broadcasterId = long.Parse(message.RoomId);
-      var matches = (await _tftMatchesRepository.NewGetTodaysMatchesByChannelId(broadcasterId)).ToList();
+      var matches = (await _tftMatchesRepository.GetTodaysMatchesByChannelIdAsync(broadcasterId)).ToList();
 
       if (matches.Any())
       {

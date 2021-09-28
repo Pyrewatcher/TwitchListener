@@ -209,7 +209,7 @@ namespace Pyrewatcher.Commands
         }
 
         // get accounts list
-        var accounts = (await _riotAccountsRepository.NewGetActiveAccountsForDisplayByChannelIdAsync(broadcaster.Id)).ToList();
+        var accounts = (await _riotAccountsRepository.GetActiveAccountsForDisplayByChannelIdAsync(broadcaster.Id)).ToList();
 
         // check if there are any accounts
         if (accounts.Any())
@@ -251,7 +251,7 @@ namespace Pyrewatcher.Commands
         }
 
         // get accounts list
-        var accounts = (await _riotAccountsRepository.NewGetInactiveAccountsForDisplayByChannelIdAsync(broadcaster.Id)).ToList();
+        var accounts = (await _riotAccountsRepository.GetInactiveAccountsForDisplayByChannelIdAsync(broadcaster.Id)).ToList();
 
         // check if there are any accounts
         if (accounts.Any())
@@ -269,7 +269,7 @@ namespace Pyrewatcher.Commands
       else if (args.Action == "lookup")
       {
         // retrieve account
-        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+        var account = await _riotAccountsRepository.GetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
 
         if (account is null)
         {
@@ -293,7 +293,7 @@ namespace Pyrewatcher.Commands
       else if (args.Action == "add")
       {
         // check if account game is already assigned to channel
-        if (await _riotAccountsRepository.NewIsAccountGameAssignedToChannel(channelId, args.Game, args.Server, args.SummonerName))
+        if (await _riotAccountsRepository.IsAccountGameAssignedToChannelAsync(channelId, args.Game, args.Server, args.SummonerName))
         {
           _client.SendMessage(message.Channel,
                               string.Format(Globals.Locale["account_add_accountAlreadyExists"], message.DisplayName,
@@ -306,7 +306,7 @@ namespace Pyrewatcher.Commands
 
         string summonerName;
         // check if account is already in the database
-        if (!await _riotAccountsRepository.NewExistsAccountGame(args.Game, args.Server, args.SummonerName))
+        if (!await _riotAccountsRepository.ExistsAccountGameAsync(args.Game, args.Server, args.SummonerName))
         {
           // if not, get account data from Riot API and insert it
           var summoner = args.Game switch
@@ -326,7 +326,7 @@ namespace Pyrewatcher.Commands
 
           summonerName = summoner.SummonerName;
 
-          var inserted = await _riotAccountsRepository.NewInsertAccountGameFromDto(args.Game, args.Server, summoner);
+          var inserted = await _riotAccountsRepository.InsertAccountGameFromDtoAsync(args.Game, args.Server, summoner);
 
           if (!inserted)
           {
@@ -336,12 +336,12 @@ namespace Pyrewatcher.Commands
         }
         else
         {
-          summonerName = await _riotAccountsRepository.NewGetAccountSummonerName(args.Server, RiotUtilities.NormalizeSummonerName(args.SummonerName));
+          summonerName = await _riotAccountsRepository.GetAccountSummonerNameAsync(args.Server, RiotUtilities.NormalizeSummonerName(args.SummonerName));
         }
 
         // assign account to channel
         var accountKey = RiotUtilities.GenerateAccountKey();
-        var assigned = await _riotAccountsRepository.NewAssignAccountGameToChannel(channelId, args.Game, args.Server, summonerName, accountKey);
+        var assigned = await _riotAccountsRepository.AssignAccountGameToChannelAsync(channelId, args.Game, args.Server, summonerName, accountKey);
 
         if (assigned)
         {
@@ -358,7 +358,7 @@ namespace Pyrewatcher.Commands
       else if (args.Action == "remove")
       {
         // check if account with given key exists
-        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+        var account = await _riotAccountsRepository.GetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
 
         if (account is null)
         {
@@ -368,7 +368,7 @@ namespace Pyrewatcher.Commands
           return false;
         }
 
-        var deleted = await _riotAccountsRepository.NewDeleteChannelAccountByKey(args.AccountKey);
+        var deleted = await _riotAccountsRepository.UnassignAccountGameFromChannelByKeyAsync(args.AccountKey);
 
         if (deleted)
         {
@@ -384,7 +384,7 @@ namespace Pyrewatcher.Commands
       else if (args.Action == "toggle")
       {
         // check if account with given key exists
-        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+        var account = await _riotAccountsRepository.GetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
 
         if (account is null)
         {
@@ -394,7 +394,7 @@ namespace Pyrewatcher.Commands
           return false;
         }
 
-        var toggled = await _riotAccountsRepository.NewToggleActiveByKey(args.AccountKey);
+        var toggled = await _riotAccountsRepository.ToggleActiveByKeyAsync(args.AccountKey);
 
         if (toggled)
         {
@@ -412,7 +412,7 @@ namespace Pyrewatcher.Commands
       else if (args.Action == "update")
       {
         // check if account with given key exists
-        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+        var account = await _riotAccountsRepository.GetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
 
         if (account is null)
         {
@@ -438,7 +438,7 @@ namespace Pyrewatcher.Commands
         }
         else if (summoner.SummonerName != account.SummonerName)
         {
-          var updated = await _riotAccountsRepository.NewUpdateSummonerNameByKeyAsync(args.AccountKey, summoner.SummonerName);
+          var updated = await _riotAccountsRepository.UpdateSummonerNameByKeyAsync(args.AccountKey, summoner.SummonerName);
 
           if (updated)
           {
@@ -461,7 +461,7 @@ namespace Pyrewatcher.Commands
       else if (args.Action == "display")
       {
         // check if account with given key exists
-        var account = await _riotAccountsRepository.NewGetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
+        var account = await _riotAccountsRepository.GetChannelAccountForLookupByKeyAsync(channelId, args.AccountKey);
 
         if (account is null)
         {
@@ -475,7 +475,7 @@ namespace Pyrewatcher.Commands
           ? $"{account.Game.ToAbbreviation()} {account.Server} {account.SummonerName}"
           : args.NewDisplayName;
 
-        var updated = await _riotAccountsRepository.NewUpdateDisplayNameByKeyAsync(args.AccountKey, newDisplayName);
+        var updated = await _riotAccountsRepository.UpdateDisplayNameByKeyAsync(args.AccountKey, newDisplayName);
 
         if (updated)
         {

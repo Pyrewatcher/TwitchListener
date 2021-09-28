@@ -18,10 +18,10 @@ namespace Pyrewatcher.DataAccess.Repositories
 
     }
 
-    public async Task<IEnumerable<string>> NewGetMatchesNotInDatabase(List<string> matches)
+    public async Task<IEnumerable<string>> GetMatchesNotInDatabaseAsync(List<string> matches)
     {
       const string query = @"SELECT [StringId]
-FROM [NewLolMatches]
+FROM [LolMatches]
 WHERE [StringId] IN @matches;";
 
       using var connection = await CreateConnectionAsync();
@@ -33,13 +33,13 @@ WHERE [StringId] IN @matches;";
       return notInDatabase;
     }
 
-    public async Task<IEnumerable<string>> NewGetMatchesToUpdateByKey(string accountKey, List<string> matches)
+    public async Task<IEnumerable<string>> GetMatchesToUpdateByKeyAsync(string accountKey, List<string> matches)
     {
-      const string query = @"SELECT [NLM].[StringId]
-FROM [NewLolMatches] [NLM]
-INNER JOIN [NewLolMatchPlayers] [NLMP] ON [NLMP].[LolMatchId] = [NLM].[Id]
-INNER JOIN [NewChannelRiotAccountGames] [NCRAG] ON [NCRAG].[RiotAccountGameId] = [NLMP].[RiotAccountGameId]
-WHERE [NCRAG].[Key] = @accountKey AND [NLM].[StringId] IN @matches;";
+      const string query = @"SELECT [LM].[StringId]
+FROM [LolMatches] [LM]
+INNER JOIN [LolMatchPlayers] [LMP] ON [LMP].[LolMatchId] = [LM].[Id]
+INNER JOIN [ChannelRiotAccountGames] [CRAG] ON [CRAG].[RiotAccountGameId] = [LMP].[RiotAccountGameId]
+WHERE [CRAG].[Key] = @accountKey AND [LM].[StringId] IN @matches;";
 
       using var connection = await CreateConnectionAsync();
 
@@ -50,9 +50,9 @@ WHERE [NCRAG].[Key] = @accountKey AND [NLM].[StringId] IN @matches;";
       return notInDatabase;
     }
 
-    public async Task<bool> NewInsertMatchFromDto(string matchId, MatchV5Dto match)
+    public async Task<bool> InsertMatchFromDtoAsync(string matchId, MatchV5Dto match)
     {
-      const string query = @"INSERT INTO [NewLolMatches] ([StringId], [GameStartTimestamp], [WinningTeam], [Duration])
+      const string query = @"INSERT INTO [LolMatches] ([StringId], [GameStartTimestamp], [WinningTeam], [Duration])
 VALUES (@matchId, @timestamp, @winningTeam, @duration);";
 
       using var connection = await CreateConnectionAsync();
@@ -68,20 +68,20 @@ VALUES (@matchId, @timestamp, @winningTeam, @duration);";
       return rows == 1;
     }
 
-    public async Task<bool> NewInsertMatchPlayerFromDto(string accountKey, string matchId, MatchParticipantV5Dto player)
+    public async Task<bool> InsertMatchPlayerFromDtoAsync(string accountKey, string matchId, MatchParticipantV5Dto player)
     {
       const string query = @"DECLARE @LolMatchId BIGINT;
 DECLARE @RiotAccountGameId BIGINT;
 
-SELECT @LolMatchId = [Id]
-FROM [NewLolMatches]
+SELECT TOP 1 @LolMatchId = [Id]
+FROM [LolMatches]
 WHERE [StringId] = @matchId;
 
-SELECT @RiotAccountGameId = [RiotAccountGameId]
-FROM [NewChannelRiotAccountGames]
+SELECT TOP 1 @RiotAccountGameId = [RiotAccountGameId]
+FROM [ChannelRiotAccountGames]
 WHERE [Key] = @accountKey;
 
-INSERT INTO [NewLolMatchPlayers] ([LolMatchId], [RiotAccountGameId], [Team], [ChampionId], [Kills],
+INSERT INTO [LolMatchPlayers] ([LolMatchId], [RiotAccountGameId], [Team], [ChampionId], [Kills],
   [Deaths], [Assists], [ControlWardsBought])
 VALUES (@LolMatchId, @RiotAccountGameId, @team, @championId, @kills, @deaths, @assists, @controlWardsBought);";
 
@@ -102,21 +102,21 @@ VALUES (@LolMatchId, @RiotAccountGameId, @team, @championId, @kills, @deaths, @a
       return rows == 1;
     }
 
-    public async Task<IEnumerable<NewLolMatch>> NewGetTodaysMatchesByChannelId(long channelId)
+    public async Task<IEnumerable<LolMatch>> GetTodaysMatchesByChannelIdAsync(long channelId)
     {
       var timestamp = RiotUtilities.GetStartTime();
 
-      const string query = @"SELECT [NLMP].[ChampionId], CASE WHEN [NLM].[WinningTeam] = [NLMP].[Team] THEN 1 ELSE 0 END AS [WonMatch],
-  [NLMP].[Kills], [NLMP].[Deaths], [NLMP].[Assists], [NLMP].[ControlWardsBought]
-FROM [NewLolMatches] [NLM]
-INNER JOIN [NewLolMatchPlayers] [NLMP] ON [NLMP].[LolMatchId] = [NLM].[Id]
-INNER JOIN [NewChannelRiotAccountGames] [NCRAG] ON [NCRAG].[RiotAccountGameId] = [NLMP].[RiotAccountGameId]
-WHERE [NCRAG].[ChannelId] = @channelId AND [NLM].[GameStartTimestamp] >= @timestamp AND [NLM].[Duration] >= 330000
-ORDER BY [NLM].[GameStartTimestamp];";
+      const string query = @"SELECT [LMP].[ChampionId], CASE WHEN [LM].[WinningTeam] = [LMP].[Team] THEN 1 ELSE 0 END AS [WonMatch],
+  [LMP].[Kills], [LMP].[Deaths], [LMP].[Assists], [LMP].[ControlWardsBought]
+FROM [LolMatches] [LM]
+INNER JOIN [LolMatchPlayers] [LMP] ON [LMP].[LolMatchId] = [LM].[Id]
+INNER JOIN [ChannelRiotAccountGames] [CRAG] ON [CRAG].[RiotAccountGameId] = [LMP].[RiotAccountGameId]
+WHERE [CRAG].[ChannelId] = @channelId AND [LM].[GameStartTimestamp] >= @timestamp AND [LM].[Duration] >= 330000
+ORDER BY [LM].[GameStartTimestamp];";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<NewLolMatch>(query, new { channelId, timestamp });
+      var result = await connection.QueryAsync<LolMatch>(query, new { channelId, timestamp });
 
       return result;
     }

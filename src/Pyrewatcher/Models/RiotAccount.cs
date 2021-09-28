@@ -2,7 +2,7 @@
 
 namespace Pyrewatcher.Models
 {
-  public class NewRiotAccount
+  public class RiotAccount
   {
     public string Key { get; set; }
     public string SummonerName { get; set; }
