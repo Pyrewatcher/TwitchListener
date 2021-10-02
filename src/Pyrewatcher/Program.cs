@@ -35,7 +35,7 @@ namespace Pyrewatcher
                                               .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
                                               .Enrich.FromLogContext()
                                               .WriteTo.File(@"D:\home\LogFiles\Application\log.txt", flushToDiskInterval: TimeSpan.FromSeconds(5),
-                                                            shared: true, restrictedToMinimumLevel: LogEventLevel.Debug)
+                                                            shared: true, restrictedToMinimumLevel: LogEventLevel.Debug, rollingInterval: RollingInterval.Day)
                                               .CreateLogger();
       }
       else
