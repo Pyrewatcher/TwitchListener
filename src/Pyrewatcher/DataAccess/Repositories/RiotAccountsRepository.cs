@@ -125,7 +125,7 @@ VALUES (@RiotAccountId, @gameStr, @summonerId, @accountId, @puuid);";
 
     public async Task<bool> ToggleActiveByKeyAsync(string accountKey)
     {
-      const string query = @"UPDATE [RiotAccounts]
+      const string query = @"UPDATE [ChannelRiotAccountGames]
 SET [Active] = ~[Active]
 WHERE [Key] = @accountKey;";
 
@@ -138,7 +138,7 @@ WHERE [Key] = @accountKey;";
 
     public async Task<bool> UpdateDisplayNameByKeyAsync(string accountKey, string displayName)
     {
-      const string query = @"UPDATE [RiotAccounts]
+      const string query = @"UPDATE [ChannelRiotAccountGames]
 SET [DisplayName] = @displayName
 WHERE [Key] = @accountKey;";
 
@@ -170,15 +170,16 @@ WHERE [CRAG].[Key] = @accountKey;";
     public async Task<IEnumerable<RiotAccount>> GetActiveLolAccountsForApiCallsByChannelIdAsync(long channelId)
     {
       const string query = @"SELECT [CRAG].[Key], [RA].[SummonerName], [RA].[ServerStr],
-  [CRAG].[DisplayName], [RAG].[SummonerId], [RAG].[AccountId], [RAG].[Puuid]
+  [CRAG].[DisplayName], [RAG].[SummonerId], [RAG].[AccountId], [RAG].[Puuid],
+  [RAG].[Tier], [RAG].[Rank], [RAG].[LeaguePoints], [RAG].[SeriesProgress]
 FROM [ChannelRiotAccountGames] [CRAG]
 INNER JOIN [RiotAccountGames] [RAG] ON [RAG].[Id] = [CRAG].[RiotAccountGameId]
 INNER JOIN [RiotAccounts] [RA] ON [RA].[Id] = [RAG].[RiotAccountId]
-WHERE [CRAG].[ChannelId] = @broadcasterId AND [CRAG].[Active] = 1 AND [RAG].[GameStr] = 'LeagueOfLegends';";
+WHERE [CRAG].[ChannelId] = @channelId AND [CRAG].[Active] = 1 AND [RAG].[GameStr] = 'LeagueOfLegends';";
 
       using var connection = await CreateConnectionAsync();
 
-      var result = await connection.QueryAsync<RiotAccount>(query, new {broadcasterId = channelId});
+      var result = await connection.QueryAsync<RiotAccount>(query, new {channelId});
       foreach (var account in result)
       {
         account.Server = Enum.Parse<Server>(account.ServerStr);
@@ -212,7 +213,8 @@ ORDER BY [CRAG].[DisplayName];";
     public async Task<IEnumerable<RiotAccount>> GetActiveTftAccountsForApiCallsByChannelIdAsync(long channelId)
     {
       const string query = @"SELECT [CRAG].[Key], [RA].[SummonerName], [RA].[ServerStr],
-  [CRAG].[DisplayName], [RAG].[SummonerId], [RAG].[AccountId], [RAG].[Puuid]
+  [CRAG].[DisplayName], [RAG].[SummonerId], [RAG].[AccountId], [RAG].[Puuid],
+  [RAG].[Tier], [RAG].[Rank], [RAG].[LeaguePoints], [RAG].[SeriesProgress]
 FROM [ChannelRiotAccountGames] [CRAG]
 INNER JOIN [RiotAccountGames] [RAG] ON [RAG].[Id] = [CRAG].[RiotAccountGameId]
 INNER JOIN [RiotAccounts] [RA] ON [RA].[Id] = [RAG].[RiotAccountId]
@@ -329,6 +331,56 @@ WHERE [ServerStr] = @serverStr AND [NormalizedSummonerName] = @normalizedSummone
       using var connection = await CreateConnectionAsync();
 
       var result = await connection.QuerySingleOrDefaultAsync<string>(query, new {serverStr, normalizedSummonerName});
+
+      return result;
+    }
+
+    public async Task<bool> InsertHistoricalRankByKeyAsync(string accountKey, string oldTier, string oldRank, string oldLeaguePoints,
+                                                           string oldSeriesProgress, string newTier, string newRank, string newLeaguePoints,
+                                                           string newSeriesProgress)
+    {
+      var timestamp = DateTime.UtcNow;
+
+      const string query = @"INSERT INTO [RiotAccountHistoricalRanks] ([RiotAccountGameId], [Timestamp], [OldTier], [OldRank],
+  [OldLeaguePoints], [OldSeriesProgress], [NewTier], [NewRank], [NewLeaguePoints], [NewSeriesProgress])
+VALUES ((SELECT [RiotAccountGameId] FROM [ChannelRiotAccountGames] WHERE [Key] = @accountKey), @timestamp, @oldTier,
+  @oldRank, @oldLeaguePoints, @oldSeriesProgress, @newTier, @newRank, @newLeaguePoints, @newSeriesProgress);";
+
+      using var connection = await CreateConnectionAsync();
+
+      var rows = await connection.ExecuteAsync(query, new
+      {
+        accountKey,
+        timestamp,
+        oldTier,
+        oldRank,
+        oldLeaguePoints,
+        oldSeriesProgress,
+        newTier,
+        newRank,
+        newLeaguePoints,
+        newSeriesProgress
+      });
+
+      return rows == 1;
+    }
+
+    public async Task<IEnumerable<RankChange>> GetTodaysRankChangeByChannelIdAsync(long channelId)
+    {
+      var timestamp = RiotUtilities.GetStartTime();
+
+      const string query = @"SELECT [CRAG].[DisplayName], [RARC].[Timestamp],
+  [RARC].[OldTier], [RARC].[OldRank], [RARC].[OldLeaguePoints], [RARC].[OldSeriesProgress],
+  [RARC].[NewTier], [RARC].[NewRank], [RARC].[NewLeaguePoints], [RARC].[NewSeriesProgress]
+FROM [ChannelRiotAccountGames] [CRAG]
+INNER JOIN [RiotAccountGames] [RAG] ON [RAG].[Id] = [CRAG].[RiotAccountGameId]
+INNER JOIN [RiotAccountRankChanges] [RARC] ON [RARC].[RiotAccountGameId] = [RAG].[Id]
+WHERE [RARC].[Timestamp] >= @timestamp AND [CRAG].[Active] = 1 AND [CRAG].[ChannelId] = @channelId
+ORDER BY [RARC].[Timestamp];";
+
+      using var connection = await CreateConnectionAsync();
+
+      var result = await connection.QueryAsync<RankChange>(query, new {timestamp, channelId});
 
       return result;
     }

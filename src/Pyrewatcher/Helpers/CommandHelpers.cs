@@ -293,6 +293,19 @@ namespace Pyrewatcher.Helpers
         {
           // TODO: Log failure
         }
+
+        if (entry is not null && (entry.Tier != account.Tier || entry.Rank != account.Rank || entry.LeaguePoints != account.LeaguePoints ||
+                                  entry.SeriesProgress != account.SeriesProgress))
+        {
+          var inserted = await _riotAccountsRepository.InsertHistoricalRankByKeyAsync(account.Key, account.Tier, account.Rank, account.LeaguePoints,
+                                                                                      account.SeriesProgress, entry.Tier, entry.Rank,
+                                                                                      entry.LeaguePoints, entry.SeriesProgress);
+
+          if (!inserted)
+          {
+            // TODO: Log failure
+          }
+        }
       }
     }
 
@@ -338,6 +351,20 @@ namespace Pyrewatcher.Helpers
         if (!updated)
         {
           // TODO: Log failure
+        }
+
+        if (entry is not null && (entry.Tier != account.Tier || entry.Rank != account.Rank || entry.LeaguePoints != account.LeaguePoints))
+        {
+          {
+            var inserted = await _riotAccountsRepository.InsertHistoricalRankByKeyAsync(account.Key, account.Tier, account.Rank, account.LeaguePoints,
+                                                                                        account.SeriesProgress, entry.Tier, entry.Rank,
+                                                                                        entry.LeaguePoints, null);
+
+            if (!inserted)
+            {
+              // TODO: Log failure
+            }
+          }
         }
       }
     }

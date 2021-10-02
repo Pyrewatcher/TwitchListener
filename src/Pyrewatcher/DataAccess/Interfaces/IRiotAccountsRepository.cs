@@ -24,5 +24,8 @@ namespace Pyrewatcher.DataAccess.Interfaces
     Task<bool> ExistsAccountGameAsync(Game game, Server server, string summonerName);
     Task<bool> AssignAccountGameToChannelAsync(long channelId, Game game, Server server, string summonerName, string accountKey);
     Task<string> GetAccountSummonerNameAsync(Server server, string normalizedSummonerName);
+    Task<bool> InsertHistoricalRankByKeyAsync(string accountKey, string oldTier, string oldRank, string oldLeaguePoints, string oldSeriesProgress,
+                                              string newTier, string newRank, string newLeaguePoints, string newSeriesProgress);
+    Task<IEnumerable<RankChange>> GetTodaysRankChangeByChannelIdAsync(long channelId);
   }
 }
