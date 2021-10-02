@@ -24,7 +24,7 @@ namespace Pyrewatcher.Commands
     public async Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
       var channelId = long.Parse(message.RoomId);
-      var ranks = (await _riotAccountsRepository.GetTodaysRankChangeByChannelIdAsync(channelId)).ToList();
+      var ranks = (await _riotAccountsRepository.GetTodaysRankChangesByChannelIdAsync(channelId)).ToList();
 
       if (ranks.Any())
       {

@@ -365,7 +365,7 @@ VALUES ((SELECT [RiotAccountGameId] FROM [ChannelRiotAccountGames] WHERE [Key] =
       return rows == 1;
     }
 
-    public async Task<IEnumerable<RankChange>> GetTodaysRankChangeByChannelIdAsync(long channelId)
+    public async Task<IEnumerable<RankChange>> GetTodaysRankChangesByChannelIdAsync(long channelId)
     {
       var timestamp = RiotUtilities.GetStartTime();
 

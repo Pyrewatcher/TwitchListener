@@ -26,6 +26,6 @@ namespace Pyrewatcher.DataAccess.Interfaces
     Task<string> GetAccountSummonerNameAsync(Server server, string normalizedSummonerName);
     Task<bool> InsertRankChangeByKeyAsync(string accountKey, string oldTier, string oldRank, string oldLeaguePoints, string oldSeriesProgress,
                                               string newTier, string newRank, string newLeaguePoints, string newSeriesProgress);
-    Task<IEnumerable<RankChange>> GetTodaysRankChangeByChannelIdAsync(long channelId);
+    Task<IEnumerable<RankChange>> GetTodaysRankChangesByChannelIdAsync(long channelId);
   }
 }
