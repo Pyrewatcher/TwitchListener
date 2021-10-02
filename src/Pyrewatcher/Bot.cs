@@ -181,7 +181,15 @@ namespace Pyrewatcher
 
     private async void OnChatCommandReceived(object sender, OnChatCommandReceivedArgs e)
     {
-      await _commandHandler.HandleCommand(e.Command);
+      try
+      {
+        await _commandHandler.HandleCommand(e.Command);
+      }
+      catch (Exception exception)
+      {
+        _logger.LogError(exception, "An error occurred while executing the command");
+        throw;
+      }
     }
   }
 }
