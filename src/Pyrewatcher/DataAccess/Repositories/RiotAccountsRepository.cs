@@ -375,7 +375,8 @@ VALUES ((SELECT [RiotAccountGameId] FROM [ChannelRiotAccountGames] WHERE [Key] =
 FROM [ChannelRiotAccountGames] [CRAG]
 INNER JOIN [RiotAccountGames] [RAG] ON [RAG].[Id] = [CRAG].[RiotAccountGameId]
 INNER JOIN [RiotAccountRankChanges] [RARC] ON [RARC].[RiotAccountGameId] = [RAG].[Id]
-WHERE [RARC].[Timestamp] >= @timestamp AND [CRAG].[Active] = 1 AND [CRAG].[ChannelId] = @channelId
+WHERE [RARC].[Timestamp] >= @timestamp AND [RARC].[OldTier] IS NOT NULL AND [RARC].[NewTier] IS NOT NULL
+  AND [CRAG].[Active] = 1 AND [CRAG].[ChannelId] = @channelId
 ORDER BY [RARC].[Timestamp];";
 
       using var connection = await CreateConnectionAsync();
