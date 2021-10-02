@@ -297,7 +297,7 @@ namespace Pyrewatcher.Helpers
         if (entry is not null && (entry.Tier != account.Tier || entry.Rank != account.Rank || entry.LeaguePoints != account.LeaguePoints ||
                                   entry.SeriesProgress != account.SeriesProgress))
         {
-          var inserted = await _riotAccountsRepository.InsertHistoricalRankByKeyAsync(account.Key, account.Tier, account.Rank, account.LeaguePoints,
+          var inserted = await _riotAccountsRepository.InsertRankChangeByKeyAsync(account.Key, account.Tier, account.Rank, account.LeaguePoints,
                                                                                       account.SeriesProgress, entry.Tier, entry.Rank,
                                                                                       entry.LeaguePoints, entry.SeriesProgress);
 
@@ -356,7 +356,7 @@ namespace Pyrewatcher.Helpers
         if (entry is not null && (entry.Tier != account.Tier || entry.Rank != account.Rank || entry.LeaguePoints != account.LeaguePoints))
         {
           {
-            var inserted = await _riotAccountsRepository.InsertHistoricalRankByKeyAsync(account.Key, account.Tier, account.Rank, account.LeaguePoints,
+            var inserted = await _riotAccountsRepository.InsertRankChangeByKeyAsync(account.Key, account.Tier, account.Rank, account.LeaguePoints,
                                                                                         account.SeriesProgress, entry.Tier, entry.Rank,
                                                                                         entry.LeaguePoints, null);
 

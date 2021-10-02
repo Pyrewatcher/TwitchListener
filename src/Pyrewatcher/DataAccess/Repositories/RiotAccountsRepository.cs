@@ -335,13 +335,13 @@ WHERE [ServerStr] = @serverStr AND [NormalizedSummonerName] = @normalizedSummone
       return result;
     }
 
-    public async Task<bool> InsertHistoricalRankByKeyAsync(string accountKey, string oldTier, string oldRank, string oldLeaguePoints,
+    public async Task<bool> InsertRankChangeByKeyAsync(string accountKey, string oldTier, string oldRank, string oldLeaguePoints,
                                                            string oldSeriesProgress, string newTier, string newRank, string newLeaguePoints,
                                                            string newSeriesProgress)
     {
       var timestamp = DateTime.UtcNow;
 
-      const string query = @"INSERT INTO [RiotAccountHistoricalRanks] ([RiotAccountGameId], [Timestamp], [OldTier], [OldRank],
+      const string query = @"INSERT INTO [RiotAccountRankChanges] ([RiotAccountGameId], [Timestamp], [OldTier], [OldRank],
   [OldLeaguePoints], [OldSeriesProgress], [NewTier], [NewRank], [NewLeaguePoints], [NewSeriesProgress])
 VALUES ((SELECT [RiotAccountGameId] FROM [ChannelRiotAccountGames] WHERE [Key] = @accountKey), @timestamp, @oldTier,
   @oldRank, @oldLeaguePoints, @oldSeriesProgress, @newTier, @newRank, @newLeaguePoints, @newSeriesProgress);";
