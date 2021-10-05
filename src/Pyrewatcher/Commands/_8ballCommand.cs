@@ -50,7 +50,7 @@ namespace Pyrewatcher.Commands
         return Task.FromResult(false);
       }
       
-      var responseAmount = Globals.Locale.Count(x => x.Key.StartsWith("8ball_"));
+      var responseAmount = Globals.Locale.Count(x => x.Key.StartsWith("8ball_r_"));
 
       var responseNumber = Math.Abs(args.Question.GetHashCode()) % responseAmount;
 
