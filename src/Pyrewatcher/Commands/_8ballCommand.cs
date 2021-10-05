@@ -52,7 +52,7 @@ namespace Pyrewatcher.Commands
       
       var responseAmount = Globals.Locale.Count(x => x.Key.StartsWith("8ball_r_"));
 
-      var responseNumber = Math.Abs(args.Question.GetHashCode()) % responseAmount;
+      var responseNumber = Math.Abs(args.Question.GetHashCode()) % responseAmount + 1;
 
       _client.SendMessage(message.Channel,
                           string.Format(Globals.Locale["8ball_response"], message.DisplayName, Globals.Locale[$"8ball_r_{responseNumber}"]));
