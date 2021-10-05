@@ -55,7 +55,7 @@ namespace Pyrewatcher.Commands
       var responseNumber = Math.Abs(args.Question.GetHashCode()) % responseAmount;
 
       _client.SendMessage(message.Channel,
-                          string.Format(Globals.Locale["8ball_response"], message.DisplayName, Globals.Locale[$"8ball_{responseNumber}"]));
+                          string.Format(Globals.Locale["8ball_response"], message.DisplayName, Globals.Locale[$"8ball_r_{responseNumber}"]));
 
       return Task.FromResult(true);
     }
