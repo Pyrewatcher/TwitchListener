@@ -111,7 +111,7 @@ VALUES (@LolMatchId, @RiotAccountGameId, @team, @championId, @kills, @deaths, @a
 FROM [LolMatches] [LM]
 INNER JOIN [LolMatchPlayers] [LMP] ON [LMP].[LolMatchId] = [LM].[Id]
 INNER JOIN [ChannelRiotAccountGames] [CRAG] ON [CRAG].[RiotAccountGameId] = [LMP].[RiotAccountGameId]
-WHERE [CRAG].[ChannelId] = @channelId AND [LM].[GameStartTimestamp] >= @timestamp AND [LM].[Duration] >= 330000
+WHERE [CRAG].[ChannelId] = @channelId AND [LM].[GameStartTimestamp] >= @timestamp AND [LM].[Duration] >= 330
 ORDER BY [LM].[GameStartTimestamp];";
 
       using var connection = await CreateConnectionAsync();
