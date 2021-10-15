@@ -59,7 +59,7 @@ WHERE [Id] = @broadcasterId;";
 
     public async Task<bool> InsertAsync(long userId)
     {
-      const string query = @"INSERT INTO [Broadcasters] (@Id)
+      const string query = @"INSERT INTO [Broadcasters] ([Id])
 VALUES (@userId);";
 
       using var connection = await CreateConnectionAsync();
