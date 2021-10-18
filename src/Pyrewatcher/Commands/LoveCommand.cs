@@ -25,10 +25,11 @@ namespace Pyrewatcher.Commands
       _logger = logger;
     }
 
-    private LoveCommandArguments ParseAndValidateArguments(List<string> argsList)
+    private LoveCommandArguments ParseAndValidateArguments(List<string> argsList, ChatMessage message)
     {
       if (argsList.Count == 0)
       {
+        _client.SendMessage(message.Channel, string.Format(Globals.Locale["love_usage"], message.DisplayName));
         _logger.LogInformation("Love object not provided - returning");
 
         return null;
@@ -41,7 +42,7 @@ namespace Pyrewatcher.Commands
 
     public Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
-      var args = ParseAndValidateArguments(argsList);
+      var args = ParseAndValidateArguments(argsList, message);
 
       if (args is null)
       {
