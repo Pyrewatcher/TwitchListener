@@ -20,7 +20,7 @@
     public User(long id, string displayName, string role = "User")
     {
       Id = id;
-      Name = displayName.ToLower();
+      Name = displayName?.ToLower();
       DisplayName = displayName;
       Role = role;
     }
