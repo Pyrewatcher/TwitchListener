@@ -76,6 +76,7 @@ namespace Pyrewatcher.Commands
 
           if (user.Id is 0 or -1)
           {
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["connect_error"], message.DisplayName, args.Channel));
             _logger.LogInformation("Broadcaster {broadcaster} couldn't be retrieved - returning", args.Channel);
 
             return false;
