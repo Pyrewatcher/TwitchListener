@@ -74,10 +74,18 @@ namespace Pyrewatcher.Commands
         {
           user = await _twitchApiHelper.GetUserByName(args.Channel);
 
-          if (user.Id is 0 or -1)
+          if (user.Id == 0)
           {
-            _client.SendMessage(message.Channel, string.Format(Globals.Locale["connect_error"], message.DisplayName, args.Channel));
-            _logger.LogInformation("Broadcaster {broadcaster} couldn't be retrieved - returning", args.Channel);
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["connect_channelDoesNotExist"], message.DisplayName, args.Channel));
+            _logger.LogInformation("Channel {channel} does not exist - returning", args.Channel);
+
+            return false;
+          }
+
+          if (user.Id == -1)
+          {
+            _client.SendMessage(message.Channel, string.Format(Globals.Locale["connect_apiError"], message.DisplayName, args.Channel));
+            _logger.LogInformation("Could not retrieve data about channel {channel} from Twitch API - returning", args.Channel);
 
             return false;
           }
