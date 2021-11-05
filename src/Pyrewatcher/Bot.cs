@@ -146,6 +146,7 @@ namespace Pyrewatcher
     private void OnDisconnected(object sender, OnDisconnectedEventArgs e)
     {
       _logger.LogInformation("Disconnected");
+      _client.Reconnect();
     }
 
     private void OnConnectionError(object sender, OnConnectionErrorArgs e)
@@ -188,7 +189,6 @@ namespace Pyrewatcher
       catch (Exception exception)
       {
         _logger.LogError(exception, "An error occurred while executing the command");
-        throw;
       }
     }
   }
