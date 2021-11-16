@@ -121,7 +121,8 @@ namespace Pyrewatcher
                     {
                       services.AddSingleton(actionType);
                     }
-                    
+
+                    services.AddTransient<IAdoZRepository, AdoZRepository>();
                     services.AddTransient<IAliasesRepository, AliasesRepository>();
                     services.AddTransient<IBansRepository, BansRepository>();
                     services.AddTransient<IBroadcastersRepository, BroadcastersRepository>();
