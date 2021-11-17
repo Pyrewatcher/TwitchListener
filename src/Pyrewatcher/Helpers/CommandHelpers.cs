@@ -140,6 +140,11 @@ namespace Pyrewatcher.Helpers
           continue;
         }
 
+        if (match.Info.QueueId is 2000 or 2010 or 2020)
+        {
+          continue;
+        }
+
         if (matchesToInsert.Contains(matchId))
         {
           var matchInserted = await _lolMatchesRepository.InsertMatchFromDtoAsync(matchId, match);
