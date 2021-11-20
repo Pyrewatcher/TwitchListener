@@ -30,7 +30,7 @@ namespace Pyrewatcher.Commands
                                   .OrderBy(x => x)
                                   .ToList();
 
-      _client.SendMessage(message.Channel, string.Format(Globals.Locale["przegrani_response"], championsWithLosses));
+      _client.SendMessage(message.Channel, string.Format(Globals.Locale["przegrani_response"], string.Join(", ", championsWithLosses)));
 
       return true;
     }
