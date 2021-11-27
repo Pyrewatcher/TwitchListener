@@ -42,6 +42,13 @@ namespace Pyrewatcher.Commands
 
     public Task<bool> ExecuteAsync(List<string> argsList, ChatMessage message)
     {
+      if (message.RoomId == "85463072")
+      {
+        _logger.LogInformation("RandomBruceTV is banned from using love and loveme commands");
+
+        return Task.FromResult(false);
+      }
+      
       var args = ParseAndValidateArguments(argsList, message);
 
       if (args is null)
