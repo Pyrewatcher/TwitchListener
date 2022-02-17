@@ -114,24 +114,22 @@ namespace Pyrewatcher.Helpers
 
       foreach (var account in accounts)
       {
-        var matches = await _riotClient.MatchV5.GetMatchesByPuuid(account.Puuid, account.Server.ToRoutingValue(),
-                                                                  RiotUtilities.GetStartTimeInSeconds());
+        var matches = (await _riotClient.MatchV5.GetMatchesByPuuid(account.Puuid, account.Server.ToRoutingValue(),
+                                                                  RiotUtilities.GetStartTimeInSeconds())).ToList();
 
-        if (matches is null || !matches.Any())
+        if (!matches.Any())
         {
           continue;
         }
 
-        var matchesList = matches.ToList();
-
-        var matchesNotInDatabase = (await _lolMatchesRepository.GetMatchesNotInDatabaseAsync(matchesList)).ToList();
-        var matchesNotUpdated = (await _lolMatchesRepository.GetMatchesToUpdateByKeyAsync(account.Key, matchesList.Except(matchesNotInDatabase).ToList())).ToList();
+        var matchesNotInDatabase = (await _lolMatchesRepository.GetMatchesNotInDatabaseAsync(matches)).ToList();
+        var matchesNotUpdated = (await _lolMatchesRepository.GetMatchesToUpdateByKeyAsync(account.Key, matches.Except(matchesNotInDatabase).ToList())).ToList();
         matchesToInsert.AddRange(matchesNotInDatabase);
         matchesToUpdate.AddRange(matchesNotInDatabase.Select(x => (x, account)));
         matchesToUpdate.AddRange(matchesNotUpdated.Select(x => (x, account)));
       }
 
-      foreach ((var matchId, var account) in matchesToUpdate)
+      foreach (var (matchId, account) in matchesToUpdate)
       {
         var match = await _riotClient.MatchV5.GetMatchById(matchId, account.Server.ToRoutingValue());
 
@@ -141,6 +139,11 @@ namespace Pyrewatcher.Helpers
         }
 
         if (match.Info.QueueId is 2000 or 2010 or 2020)
+        {
+          continue;
+        }
+
+        if (!match.Info.Teams.Any(x => x.IsWinningTeam))
         {
           continue;
         }
