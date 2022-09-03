@@ -1,0 +1,19 @@
+version: '2.2'
+
+services:
+  pyrewatcher-bot:
+    build:
+      context: ../../
+      dockerfile: build/bot/Dockerfile
+    environment:
+      - ConnectionStrings__Database=$PYREWATCHER_DATABASE
+      - ApiKeys__RiotLol=$APIKEYS_RIOTLOL
+      - ApiKeys__RiotTft=$APIKEYS_RIOTTFT
+      - Twitch__Username=$TWITCH_USERNAME
+      - Twitch__IrcToken=$TWITCH_IRCTOKEN
+      - Twitch__ApiToken=$TWITCH_APITOKEN
+      - Twitch__ClientId=$TWITCH_CLIENTID
+    ports:
+      - "5100:80"
+    container_name: pyrewatcher_bot
+    image: scytlee/scytlee:pyrewatcher-bot
