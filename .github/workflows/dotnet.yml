@@ -1,0 +1,73 @@
+name: .NET
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  prepare_image:
+    name: Prepare image
+    runs-on: ubuntu-latest
+    steps:
+    - name: Restore dependencies
+      uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 5.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore -c Release
+    - name: Test
+      run: dotnet test --no-build -c Release
+    - name: Publish
+      run: |
+        cd src/TweetPicker.Service
+        dotnet publish --no-build -c Release -o ../../out
+    - name: Setup Docker
+      uses: docker/setup-buildx-action@v2
+    - name: Push image
+      run: |
+        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+        cd build/service
+        docker-compose build --no-cache
+        docker-compose push
+        
+  # deploy:
+  #   name: Deploy
+  #   needs: prepare_image
+  #   runs-on: ubuntu-latest
+  #   container: alpine
+  #   steps:
+  #   - name: Restore dependencies
+  #     uses: actions/checkout@v3
+  #   - name: Send docker-compose file
+  #     uses: appleboy/scp-action@master
+  #     with:
+  #       host: ${{ secrets.HOST_ADDRESS }}
+  #       username: ${{ secrets.SSH_USER }}
+  #       port: ${{ secrets.SSH_PORT }}
+  #       key: ${{ secrets.SSH_PRIVATE_KEY }}
+  #       source: "build/service/docker-compose.yml"
+  #       target: "${{ secrets.HOST_PATH }}"
+  #       strip_components: 2
+  #   - name: Deploy
+  #     uses: appleboy/ssh-action@master
+  #     env:
+  #       TWEETPICKER_DATABASE: ${{ secrets.TWEETPICKER_DATABASE }}
+  #       TWITTER_ACCESSTOKEN: ${{ secrets.TWITTER_ACCESSTOKEN }}
+  #       TWITTER_ACCESSSECRET: ${{ secrets.TWITTER_ACCESSSECRET }}
+  #       TWITTER_CONSUMERKEY: ${{ secrets.TWITTER_CONSUMERKEY }}
+  #       TWITTER_CONSUMERSECRET: ${{ secrets.TWITTER_CONSUMERSECRET }}
+  #     with:
+  #       host: ${{ secrets.HOST_ADDRESS }}
+  #       username: ${{ secrets.SSH_USER }}
+  #       port: ${{ secrets.SSH_PORT }}
+  #       key: ${{ secrets.SSH_PRIVATE_KEY }}
+  #       envs: TWEETPICKER_DATABASE, TWITTER_ACCESSTOKEN, TWITTER_ACCESSSECRET, TWITTER_CONSUMERKEY, TWITTER_CONSUMERSECRET
+  #       script: |
+  #         cd ${{ secrets.HOST_PATH }}
+  #         ./staging.sh
