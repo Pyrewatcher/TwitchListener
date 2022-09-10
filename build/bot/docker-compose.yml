@@ -17,3 +17,4 @@ services:
       - "5100:80"
     container_name: pyrewatcher_bot
     image: scytlee/scytlee:pyrewatcher-bot
+    restart: unless-stopped
