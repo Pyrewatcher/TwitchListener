@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Pyrewatcher.DataAccess.Interfaces;
 using Pyrewatcher.Handlers;
+using System.Threading;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -146,12 +147,15 @@ namespace Pyrewatcher
     private void OnDisconnected(object sender, OnDisconnectedEventArgs e)
     {
       _logger.LogInformation("Disconnected");
-      _client.Reconnect();
+      Thread.Sleep(5000);
+      Environment.Exit(1);
     }
 
     private void OnConnectionError(object sender, OnConnectionErrorArgs e)
     {
       _logger.LogError("OnConnectionError - An error occurred: {Message}", e.Error.Message);
+      Thread.Sleep(5000);
+      Environment.Exit(1);
     }
 
     private void OnJoinedChannel(object sender, OnJoinedChannelArgs e)
@@ -167,12 +171,15 @@ namespace Pyrewatcher
     private void OnFailureToReceiveJoinConfirmation(object sender, OnFailureToReceiveJoinConfirmationArgs e)
     {
       _logger.LogInformation("Failed to connect to channel {channel}: {error}", e.Exception.Channel, e.Exception.Details);
-      _client.JoinChannel(e.Exception.Channel);
+      Thread.Sleep(5000);
+      Environment.Exit(1);
     }
 
     private void OnError(object sender, OnErrorEventArgs e)
     {
       _logger.LogError(e.Exception, "OnError - An error occurred: {Message}", e.Exception.Message);
+      Thread.Sleep(5000);
+      Environment.Exit(1);
     }
 
     private void OnCommunitySubscription(object sender, OnCommunitySubscriptionArgs e)
