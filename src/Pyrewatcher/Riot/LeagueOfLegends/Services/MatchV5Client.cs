@@ -7,6 +7,7 @@ using Pyrewatcher.Riot.LeagueOfLegends.Interfaces;
 using Pyrewatcher.Riot.LeagueOfLegends.Models;
 using Pyrewatcher.Riot.Models;
 using Pyrewatcher.Riot.Utilities;
+using System;
 
 namespace Pyrewatcher.Riot.LeagueOfLegends.Services
 {
@@ -36,7 +37,7 @@ namespace Pyrewatcher.Riot.LeagueOfLegends.Services
     {
       if (!_rateLimiter.PickToken(Game.LeagueOfLegends, routingValue))
       {
-        return null;
+        return Array.Empty<string>();
       }
 
       var request = BaseRequest(routingValue).AppendPathSegments("matches", "by-puuid", puuid, "ids");
@@ -68,7 +69,7 @@ namespace Pyrewatcher.Riot.LeagueOfLegends.Services
 
       var response = await request.GetAsync<IEnumerable<string>>();
 
-      return response;
+      return response ?? Array.Empty<string>();
     }
 
     public async Task<MatchV5Dto> GetMatchById(string matchId, RoutingValue routingValue)
