@@ -171,8 +171,6 @@ namespace Pyrewatcher
     private void OnFailureToReceiveJoinConfirmation(object sender, OnFailureToReceiveJoinConfirmationArgs e)
     {
       _logger.LogInformation("Failed to connect to channel {channel}: {error}", e.Exception.Channel, e.Exception.Details);
-      Thread.Sleep(5000);
-      Environment.Exit(1);
     }
 
     private void OnError(object sender, OnErrorEventArgs e)
